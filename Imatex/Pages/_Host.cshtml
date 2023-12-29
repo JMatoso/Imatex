@@ -1,0 +1,61 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Components.Web
+@namespace Imatex.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=7">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <base href="~/" />
+
+    <meta name="theme-color" content="#000000" />
+    <meta name="msapplication-navbutton-color" content="#000000" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="#000000" />
+
+    <meta name="description" content="Converts image to text.">
+    <meta name="author" content="Imatex">
+    <meta name="keywords" content="Image, Text, OCR">
+
+    <meta name="description" content="Converts image to text.">
+    <meta name="topic" content="Imatex">
+    <meta name="author" content="José Matoso">
+    <meta name="keywords" content="Image, Text, OCR">
+    <meta name="category" content="Image, Text, OCR">
+    <meta name="abstract" content="Converts image to text.">
+    <meta name="coverage" content="Worldwide">
+
+    <meta property="og:locale" content="en-US" />
+    <meta property="og:site_name" content="Scrapie" />
+
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link href="css/site.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="favicon.png"/>
+
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+
+    <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
+</head>
+<body>
+    <component type="typeof(App)" render-mode="ServerPrerendered" />
+
+    <div id="blazor-error-ui">
+        <environment include="Staging,Production">
+            An error has occurred. This application may no longer respond until reloaded.
+        </environment>
+        <environment include="Development">
+            An unhandled exception has occurred. See browser dev tools for details.
+        </environment>
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>
