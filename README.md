@@ -16,7 +16,7 @@
 dotnet restore
 ```
 
-<h3>Run</h3>
+<p>Run</p>
 
 ```
 dotnet run
