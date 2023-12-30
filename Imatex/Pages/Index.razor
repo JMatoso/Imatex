@@ -1,11 +1,12 @@
 ﻿@page "/"
 
 <PageTitle>Image To Text</PageTitle>
+<MudText Typo="Typo.h4" Class="text-center py-5">Image To Text</MudText>
 
 <MudStack Class="w-100">
     <MudFileUpload T="IReadOnlyList<IBrowserFile>"
                    AppendMultipleFiles
-                   Accept="@ExtensionsOptions.GetAllowedExtensions()"
+                   Accept="@ExtensionsOptions.GetAllowedImageExtensions()"
                    MaximumFileCount="@ExtensionsOptions.MaxFileCount"
                    OnFilesChanged="OnInputFileChanged"
                    Hidden="@false"
@@ -31,7 +32,7 @@
                     <div class="col-md-6">
                         <MudPaper Class="py-3" Elevation="0" Style="background-color: transparent;">
                             <MudText Typo="Typo.body2" Color="Color.Surface">
-                                Allowed formats: @ExtensionsOptions.GetAllowedExtensions()
+                                Allowed formats: @ExtensionsOptions.GetAllowedImageExtensions()
                             </MudText>
                             <MudText Typo="Typo.body2" Color="Color.Surface">
                                 Max size: @ExtensionsOptions.MaxFileSize.Bytes()
@@ -39,34 +40,39 @@
                         </MudPaper>
                     </div>
                     <div class="col-md-6">
-                        <MudToolBar DisableGutters="true"
-                                    Class="relative d-flex justify-end gap-4 z-30">
-                            <MudButton HtmlTag="label"
-                                       Color="Color.Primary"
-                                       for="@context.Id"
-                                       Variant="Variant.Filled">
-                                Open
-                            </MudButton>
-                            <MudButton OnClick="@UploadAsync"
-                                       Color="Color.Primary"
-                                       Disabled="@(!_imageFiles.Any() || _loading)"
-                                       Variant="Variant.Filled">
-                                @if (_loading)
-                                {
-                                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
-                                    <MudText Class="ms-2 text-uppercase">Processing</MudText>
-                                }
-                                else
-                                {
-                                    <MudText Class="text-uppercase">Load</MudText>
-                                }
-                            </MudButton>
-                            <MudButton OnClick="@Clear"
-                                       Color="Color.Error"
-                                       Disabled="@(!_imageFiles.Any())"
-                                       Variant="Variant.Filled">
-                                Clear
-                            </MudButton>
+                        <MudToolBar DisableGutters="true" Class="relative d-flex justify-end gap-4 z-30">
+                            <MudTooltip Text="Open Files">
+                                <MudButton HtmlTag="label"
+                                           Color="Color.Primary"
+                                           for="@context.Id"
+                                           Variant="Variant.Filled">
+                                    Open
+                                </MudButton>
+                            </MudTooltip>
+                            <MudTooltip Text="Extract Text From Images">
+                                <MudButton OnClick="@UploadAsync"
+                                           Color="Color.Primary"
+                                           Disabled="@(!_imageFiles.Any() || _loading)"
+                                           Variant="Variant.Filled">
+                                    @if (_loading)
+                                    {
+                                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                        <MudText Class="ms-2 text-uppercase">Processing</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText Class="text-uppercase">Load</MudText>
+                                    }
+                                </MudButton>
+                            </MudTooltip>
+                            <MudTooltip Text="Clear Form">
+                                <MudButton OnClick="@Clear"
+                                           Color="Color.Error"
+                                           Disabled="@(!_imageFiles.Any())"
+                                           Variant="Variant.Filled">
+                                    Clear
+                                </MudButton>
+                            </MudTooltip>
                         </MudToolBar>
                     </div>
                 </div>
@@ -122,7 +128,7 @@
 
         foreach (var file in e.GetMultipleFiles())
         {
-            if(!ExtensionsOptions.IsAllowed(Path.GetExtension(file.Name)))
+            if(!ExtensionsOptions.IsAllowedImageExtension(Path.GetExtension(file.Name)))
             {
                 Snackbar.Add($"The file {file.Name} is not allowed.", Severity.Warning);
                 continue;

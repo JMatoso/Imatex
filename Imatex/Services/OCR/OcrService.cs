@@ -13,6 +13,11 @@ public class OcrService : IDisposable, IOcrService
         _tesseractEngine = new TesseractEngine(@"./tessdata", "eng+por+fra+spa+ita", EngineMode.Default);
     }
 
+    /// <summary>
+    /// Extract the text from the images.
+    /// </summary>
+    /// <param name="images">Bitmap image files.</param>
+    /// <returns>A list of <see cref="ExtractedText"/></returns>
     public IEnumerable<ExtractedText> GetTextFromImages(params Bitmap[] images)
     {
         foreach (var img in images)

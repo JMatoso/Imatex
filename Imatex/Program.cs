@@ -1,4 +1,5 @@
 using Imatex.Options;
+using Imatex.Services.Extractor;
 using Imatex.Services.OCR;
 using MudBlazor;
 using MudBlazor.Services;
@@ -14,7 +15,7 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.PreventDuplicates = true;
     config.SnackbarConfiguration.NewestOnTop = true;
     config.SnackbarConfiguration.ShowCloseIcon = true;
-    config.SnackbarConfiguration.VisibleStateDuration = 10000;
+    config.SnackbarConfiguration.VisibleStateDuration = 5000;
     config.SnackbarConfiguration.HideTransitionDuration = 350;
     config.SnackbarConfiguration.ShowTransitionDuration = 100;
     config.SnackbarConfiguration.SnackbarVariant = Variant.Filled;
@@ -25,7 +26,9 @@ builder.Services.AddServerSideBlazor();
 var extensionsOptions = new ExtensionsOptions();
 builder.Configuration.Bind(nameof(ExtensionsOptions), extensionsOptions);
 builder.Services.AddSingleton(extensionsOptions);
+
 builder.Services.AddScoped<IOcrService, OcrService>();
+builder.Services.AddScoped<IImageExtractor, ImageExtractor>();
 
 var app = builder.Build();
 

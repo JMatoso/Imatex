@@ -1,0 +1,251 @@
+﻿@page "/extractor"
+
+<PageTitle>Image Extractor</PageTitle>
+<MudText Typo="Typo.h4" Class="text-center py-5">Image Extractor</MudText>
+
+<MudStack Class="w-100">
+    <MudFileUpload T="IBrowserFile" Accept="@ExtensionsOptions.GetAllowedDocumentExtensions()" OnFilesChanged="OnInputFileChanged" MaximumFileCount="1">
+        <ButtonTemplate>
+            <MudButton HtmlTag="label"
+                       Variant="Variant.Filled"
+                       Color="Color.Dark"
+                       StartIcon="@Icons.Material.Filled.CloudUpload"
+                       for="@context.Id">
+                @if (_file != default)
+                {
+                    <MudText Typo="Typo.subtitle1" Class="text-uppercase">
+                        @_file.fileName (@_file.file.Size.Bytes())
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.subtitle1" Class="text-uppercase">
+                        Open a document
+                    </MudText>
+                }
+            </MudButton>
+        </ButtonTemplate>
+    </MudFileUpload>    
+
+    <EditForm OnValidSubmit="UploadAsync" Model="_uploadModel">
+        <div class="relative d-flex justify-end gap-4 z-30 py-3 w-100">
+            <MudNumericField Min="1" @bind-Value="_uploadModel.Width" For="@(() => _uploadModel.Width)" Variant="Variant.Outlined" Label="Width" />
+            <MudNumericField Min="1" @bind-Value="_uploadModel.Height" For="@(() => _uploadModel.Height)" Variant="Variant.Outlined" Label="Height" />
+            <MudSwitch Label="Keep Aspect Ratio" @bind-Value="_uploadModel.KeepAspectRatio" Color="Color.Info" Class="mt-4" />
+            <MudSwitch Label="Resize Images" @bind-Value="_uploadModel.ResizeImages" Color="Color.Info" Class="mt-4" />
+            <MudButton OnClick="@UploadAsync"
+                       Color="Color.Primary"
+                       ButtonType="ButtonType.Submit"
+                       Disabled="@(_file == default || _loading)"
+                       Variant="Variant.Filled">
+                @if (_loading)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                    <MudText Class="ms-2 text-uppercase">Processing</MudText>
+                }
+                else
+                {
+                    <MudText Class="text-uppercase">Extract</MudText>
+                }
+            </MudButton>
+            <MudButton OnClick="@Clear"
+                       Color="Color.Error"
+                       Disabled="@(_file == default)"
+                       Variant="Variant.Filled">
+                Clear All
+            </MudButton>
+        </div>
+    </EditForm>
+
+    <MudPaper Class="py-3" Elevation="0" Style="background-color: transparent;">
+        <MudText Typo="Typo.body2" Color="Color.Surface">
+            Allowed formats: @ExtensionsOptions.GetAllowedDocumentExtensions()
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Surface">
+            Max size: @ExtensionsOptions.MaxFileSize.Bytes()
+        </MudText>
+    </MudPaper>
+</MudStack>
+
+<MudPaper Elevation="25" Class="my-5">
+    <MudToolBar>
+        <MudText Typo="Typo.subtitle1" Color="Color.Inherit">@_extractedImages.Count Images Found</MudText>
+        <MudSpacer />
+        <MudTooltip Text="Download All Images">
+            <MudIconButton Size="Size.Large" 
+                           Icon="@Icons.Material.Filled.CloudDownload" 
+                           Color="Color.Info"
+                           Disabled="@(!_extractedImages.Any())" />
+        </MudTooltip>
+        <MudTooltip Text="Delete All Images">
+            <MudIconButton Size="Size.Large" 
+                           Disabled="@(!_extractedImages.Any())"
+                           Icon="@Icons.Material.Filled.DeleteSweep" 
+                           Color="Color.Error"
+                           OnClick="DeleteImages"/>
+        </MudTooltip>
+    </MudToolBar>
+</MudPaper>
+
+@if(_extractedImages.Any())
+{
+    <MudGrid>
+        @foreach(var image in _extractedImages)
+        {
+            <MudItem xs="12" sm="6" md="4" lg="3" xl="3" xxl="3">
+                <MudCard Style="height: 310px">
+                    <img class="resized-image rounded-top" src="@image.ImageBase64" alt="@image.FileName" />
+                    <MudCardContent>
+                        <MudText Typo="Typo.body2" Class="card-title">@image.FileName</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Text" Color="Color.Primary">Download</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@if(_loading)
+{
+    <MudGrid>
+        @for(var i = 0; i < 8; i++)
+        {
+            <MudItem xs="12" sm="6" md="4" lg="3" xl="3" xxl="3">
+                <MudCard>
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                    <MudCardContent>
+                        <MudSkeleton Width="80%" />
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudSkeleton Width="105px" Height="40px" Class="ml-3" />
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@inject ILogger<Extractor> Logger
+@inject IImageExtractor ImageExtractor
+
+@code {
+    private bool _loading = false;
+    private string _dragClass = DefaultDragClass;
+    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mt-4 mud-width-full mud-height-full z-10";
+
+    private UploadModel _uploadModel = new();
+    private List<ExtractedImages> _extractedImages = new();
+    private (IBrowserFile file, string fileName) _file = new();
+
+    private void OnInputFileChanged(InputFileChangeEventArgs e)
+    {
+        ClearDragClass();
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            if (!ExtensionsOptions.IsAllowedDocumentExtension(Path.GetExtension(file.Name)))
+            {
+                Snackbar.Add($"The file {file.Name} is not allowed.", Severity.Warning);
+                continue;
+            }
+
+            _file = (file, file.Name);
+            StateHasChanged();
+        }
+    }
+
+    private async Task UploadAsync()
+    {
+        if(_file == default)
+        {
+            Snackbar.Add("Please select a file.", Severity.Warning);
+            return;
+        }
+
+        _loading = true;
+
+        try
+        {
+            using var imageMemoryStream = new MemoryStream();
+            await _file.file.OpenReadStream(ExtensionsOptions.MaxFileSize).CopyToAsync(imageMemoryStream);
+
+            var result = ImageExtractor.ExtractImagesFromDocument(
+                imageMemoryStream,
+                _uploadModel.ResizeImages,
+                _uploadModel.Width,
+                _uploadModel.Height,
+                _uploadModel.KeepAspectRatio);
+
+            if(!result.success)
+            {
+                Snackbar.Add("Error during the extraction.", Severity.Error);
+                return;
+            }
+
+            if (result.images is null || result.images.Count() <= 0)
+            {
+                Clear();
+                Snackbar.Add("Any image found.", Severity.Info);
+                return;
+            }
+
+            foreach(var image in result.images)
+            {
+                using var ms = new MemoryStream();
+                image.CopyTo(ms);
+                string base64Image = Convert.ToBase64String(ms.ToArray());
+
+                _extractedImages.Add(new ExtractedImages
+                {
+                    FileName = $"{_file.fileName}-image-{DateTime.Now.Ticks}",
+                    ImageBase64 = string.Format("data:image/png;base64,{0}", base64Image)
+                });
+            }
+
+            Clear();
+        }
+        catch (OutOfMemoryException)
+        {
+            Snackbar.Add("Out of memory. Please try again with a smaller document.", Severity.Warning);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(e.Message);
+            Snackbar.Add("Something went wrong, try again.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteImages()
+    {
+        var parameters = new DialogParameters<DialogMessage>();
+        parameters.Add(x => x.ContentText, "Do you really want to delete these images? This process cannot be undone.");
+        parameters.Add(x => x.ButtonText, "Delete");
+        parameters.Add(x => x.Color, Color.Error);
+
+        var dialog = await Dialog.ShowAsync<DialogMessage>("Delete Images", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            _extractedImages.Clear();
+            StateHasChanged();
+        }
+    }
+
+    private void Clear()
+    {
+        _file = default;
+        ClearDragClass();
+    }
+
+    private void SetDragClass() => _dragClass = $"{DefaultDragClass} mud-border-primary";
+
+    private void ClearDragClass() => _dragClass = DefaultDragClass;
+}
