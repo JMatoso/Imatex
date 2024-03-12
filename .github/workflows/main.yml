@@ -37,7 +37,7 @@ jobs:
         run: dotnet build -c Release --no-restore
 
       - name: Publish .NET
-        run: dotnet publish -c:Release --nologo
+        run: dotnet publish -c:Release -o bin/Release/net8.0/publish --nologo
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -51,4 +51,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         with:
-            source: /
+            source: 'bin/Release/net8.0/publish/**'
