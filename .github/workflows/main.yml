@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy Imatex to GitHub Pages
 
 on:
   push:
@@ -25,14 +25,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET
+      - name: Setup .NET Core
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: 8.0.x
-
-
-      - name: Install .NET Wasm Tools
-        run: dotnet workload install wasm-tools
 
       - name: Restore Dependencies
         run: dotnet restore
@@ -41,7 +37,7 @@ jobs:
         run: dotnet build -c Release --no-restore
 
       - name: Publish .NET
-        run: dotnet publish -c:Release -o docs --nologo
+        run: dotnet publish -c:Release --nologo
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -49,8 +45,10 @@ jobs:
       - name: Upload
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'docs/wwwroot'
+          path: 'bin/Release/net8.0/publish'
 
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+            source: /
