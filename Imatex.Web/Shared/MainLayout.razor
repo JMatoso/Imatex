@@ -1,0 +1,18 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudText Typo="Typo.h5" Class="ml-3">Imatex</MudText>
+        <NavMenu />
+        <MudSpacer />
+        <MudIconButton Href="https://github.com/JMatoso/Imatex" Target="_blank" Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" />
+    </MudAppBar>
+    <MudMainContent>
+        <MudContainer Class="mt-16">
+            @Body
+            <MudSnackbarProvider />
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>

@@ -1,0 +1,36 @@
+﻿﻿<HeadContent>
+    <PageTitle>@($"Imatex - {PageTitle}")</PageTitle>
+
+    <meta name="topic" content="@_keywords">
+    <meta name="category" content="@_keywords">
+    
+    <meta name="url" content="@Navigator.Uri">
+    <meta name="keywords" content="@_keywords">
+    <meta name="abstract" content="@Description">
+    <meta name="description" content="@Description">
+
+    <meta property="og:image" content="@Image">
+    <meta property="og:url" content="@Navigator.Uri">
+    <meta property="og:description" content="@Description">
+    <meta property="og:title" content="@($"Imatex - {PageTitle}")">
+
+    <meta name="twitter:image" content="@Image">
+    <meta name="twitter:url" content="@Navigator.Uri">
+    <meta name="twitter:description" content="@Description">
+    <meta name="twitter:title" content="@($"Imatex - {PageTitle}")">    
+</HeadContent>
+
+@code {
+    [Parameter]
+    public string? PageTitle { get; set; } = "Home";
+
+    [Parameter]
+    public string[] Keywords { get; set; } = new string[] { "Imatex", "Image To Text", "Image Extractor", "OCR", "Optical Character Recognition", "Document To Image", "Extract Images From Documents" };
+    private string? _keywords => string.Join(", ", Keywords);
+
+    [Parameter]
+    public string? Description { get; set; } = "Imatex is a web application that allows you to extract text from images and documents.";
+
+    [Parameter]
+    public string? Image { get; set; } = "https://jmatoso.github.io/Imatex/images/image.jpg";
+}

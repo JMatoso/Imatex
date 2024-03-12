@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Imatex", "Imatex\Imatex.csproj", "{217984DD-8E29-4AE0-BA67-D80F7F8AC31A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Imatex.Web", "Imatex.Web\Imatex.Web.csproj", "{1E744B93-9518-47DA-B711-501350407F32}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{217984DD-8E29-4AE0-BA67-D80F7F8AC31A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{217984DD-8E29-4AE0-BA67-D80F7F8AC31A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{217984DD-8E29-4AE0-BA67-D80F7F8AC31A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{217984DD-8E29-4AE0-BA67-D80F7F8AC31A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E744B93-9518-47DA-B711-501350407F32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E744B93-9518-47DA-B711-501350407F32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E744B93-9518-47DA-B711-501350407F32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E744B93-9518-47DA-B711-501350407F32}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

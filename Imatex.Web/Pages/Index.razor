@@ -1,0 +1,165 @@
+﻿@page "/"
+@using MudBlazor
+
+@inject ILogger<Index> Logger
+@inject Services.Ocr.ITextConverter Engine
+
+<MetaTags PageTitle="Image To Text" />
+
+<MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Image To Text</MudText>
+<MudText Align="Align.Center">Turn your images into text instantly! Upload a photo and get a text file in seconds. It's that easy!</MudText>
+
+<MudStack Class="w-100">
+    <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                   AppendMultipleFiles
+                   Accept="@ExtensionsOptions.Value.GetAllowedImageExtensionsAsString()"
+                   MaximumFileCount="@ExtensionsOptions.Value.MaxFileCount"
+                   OnFilesChanged="OnInputFileChanged"
+                   Hidden="@false"
+                   InputClass="absolute mud-width-full mud-height-full overflow-hidden z-20"
+                   InputStyle="opacity:0"
+                   @ondragenter="@SetDragClass"
+                   @ondragleave="@ClearDragClass"
+                   @ondragend="@ClearDragClass">
+        <ButtonTemplate>
+            <MudPaper Height="200px"
+                       Outlined="true"
+                       Class="@_dragClass">
+                <MudText Typo="Typo.h6" Align="Align.Center">
+                     Drag and drop files here or click
+                </MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center">
+                    Maximum file size: <strong>@ExtensionsOptions.Value.MaxFileSize.Bytes()</strong>
+                </MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center">
+                    You can upload <strong>@ExtensionsOptions.Value.MaxFileCount</strong> files at a time
+                </MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center">
+                    Allowed extensions: @ExtensionsOptions.Value.GetAllowedImageExtensionsAsString(" | ").ToLower()
+                </MudText>
+                @foreach (var name in _imageFiles.Select(x => x.imageName))
+                {
+                    <MudChip Color="Color.Dark" Text="@name" />
+                }
+            </MudPaper>
+            <MudToolBar DisableGutters="true"
+                        Class="relative d-flex justify-end gap-4 z-30">
+                <MudButton OnClick="@UploadAsync"
+                           Color="Color.Primary"
+                           Disabled="@(!_imageFiles.Any())"
+                           Variant="Variant.Filled">
+                    Extract Text
+                </MudButton>
+                <MudButton OnClick="@Clear"
+                           Color="Color.Error"
+                           Disabled="@(!_imageFiles.Any())"
+                           Variant="Variant.Filled">
+                    Clear
+                </MudButton>
+            </MudToolBar>
+        </ButtonTemplate>
+    </MudFileUpload>
+</MudStack>
+
+@if(_loading)
+{
+    for(int i = 0; i < _imageFiles.Count; i++)
+    {
+        <MudSkeleton Width="125px" />
+        <MudSkeleton Animation="Animation.Wave" Height="75px" Style="my-4" />
+    }
+}
+
+@foreach(var extractedText in _extractedTexts.OrderByDescending(x => x.DateIssued))
+{
+    <MudPaper Elevation="25" Class="pa-4 my-4">
+        <MudPaper Class="align-start d-flex" Elevation="0" Style="background-color: transparent;" Outlined="false">
+            <MudText Typo="Typo.body2" Class="py-3">
+                Confidence: @extractedText.Confidence
+            </MudText>
+            <MudSpacer />
+            <MudIconButton OnClick="async () => await Application.CopyToClipboardAsync(extractedText.Text)" Icon="@Icons.Material.Filled.ContentCopy" aria-label="Copy to clipboard"></MudIconButton>
+        </MudPaper>
+        <MudText Typo="Typo.body1">
+            @extractedText.Text
+        </MudText>
+    </MudPaper>
+}
+
+@code {
+    private bool _loading = false;
+    private string _dragClass = DefaultDragClass;
+    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mt-4 mud-width-full mud-height-full z-10";
+
+    private List<ExtractedTextResult> _extractedTexts = new();
+    private readonly List<(IBrowserFile file, string imageName)> _imageFiles = new();
+
+    private void OnInputFileChanged(InputFileChangeEventArgs e)
+    {
+        ClearDragClass();
+
+        if(_imageFiles.Count >= ExtensionsOptions.Value.MaxFileCount)
+        {
+            Snackbar.Add($"You can only upload {ExtensionsOptions.Value.MaxFileCount} files at a time.");
+            return;
+        }
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            if(!ExtensionsOptions.Value.IsAllowedImageExtension(Path.GetExtension(file.Name)))
+            {
+                Snackbar.Add($"The file {file.Name} is not allowed.", Severity.Warning);
+                continue;
+            }
+
+            _imageFiles.Add((file, file.Name));
+        }
+
+        Analytics.TrackEvent("images_uploaded", new { value = _imageFiles.Count });
+    }
+
+    private async Task UploadAsync()
+    {
+        _loading = true;
+
+        try
+        {
+            var images = new List<System.Drawing.Bitmap>();
+
+            foreach (var image in _imageFiles)
+            {
+                using var ms = new MemoryStream();
+                await image.file.OpenReadStream(ExtensionsOptions.Value.MaxFileSize).CopyToAsync(ms);
+                var bitmap = new System.Drawing.Bitmap(ms);
+                images.Add(bitmap);
+            }
+
+            _extractedTexts.AddRange(Engine.GetTextFromImages(images.ToArray()));
+            Clear();
+        }
+        catch (OutOfMemoryException)
+        {
+            Snackbar.Add("Please try again with smaller images.", Severity.Warning);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(e.Message);
+            Snackbar.Add("Something went wrong, try again.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }        
+    }
+
+    private void Clear()
+    {
+        _imageFiles.Clear();
+        ClearDragClass();
+    }
+
+    private void SetDragClass() => _dragClass = $"{DefaultDragClass} mud-border-primary";
+
+    private void ClearDragClass() => _dragClass = DefaultDragClass;
+}

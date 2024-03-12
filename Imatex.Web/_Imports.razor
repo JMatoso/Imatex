@@ -1,0 +1,28 @@
+﻿@using System.Net.Http
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.Extensions.Options
+@using Microsoft.JSInterop
+
+@using Imatex.Web
+@using Imatex.Web.Models
+@using Imatex.Web.Shared
+@using Imatex.Web.Options
+@using Imatex.Web.Services
+@using Imatex.Web.Helpers.Interop
+
+@using MudBlazor
+@using Humanizer
+
+@using Blazor.Analytics
+@using Blazor.Analytics.Components
+
+@inject ISnackbar Snackbar
+@inject IAnalytics Analytics
+@inject NavigationManager Navigator
+@inject IApplicationInterop Application
+@inject IOptions<ExtensionsOptions> ExtensionsOptions
