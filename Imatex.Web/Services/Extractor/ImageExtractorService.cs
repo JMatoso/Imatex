@@ -74,7 +74,7 @@ public class ImageExtractorService(ILogger<ImageExtractorService> logger) : IIma
 
             var ms = new MemoryStream();
 
-            ApplyTransparentBackground(resizedImage).SaveAsWebp(ms);
+            ApplyTransparentBackground(resizedImage).SaveAsPng(ms);
 
             return (ms, true);
         }

@@ -9,7 +9,7 @@
 <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Extract Images From Documents</MudText>
 <MudText Align="Align.Center">Effortlessly <span class="text-primary">extract images</span> from documents! Upload your file and <span class="text-primary">retrieve images</span> quickly and easily.</MudText>
 
-<MudStack Class="w-100">
+<MudStack Class="w-100 mt-2">
     <MudFileUpload T="IBrowserFile" Accept="@ExtensionsOptions.Value.GetAllowedDocumentExtensionsAsString()" 
                    FilesChanged="UploadDocument" 
                    AppendMultipleFiles="false"
@@ -25,6 +25,7 @@
                            Color="Color.Primary"
                            Size="Size.Large"
                            Class="my-7"
+                           Disabled="@(_loading)"
                            StartIcon="@Icons.Material.Filled.CloudUpload"
                            for="@context.Id">
                     Select a Document to Upload
@@ -49,15 +50,6 @@
             </MudPaper>
         </ButtonTemplate>
     </MudFileUpload>
-</MudStack>
-
-<MudStack Row="true" Class="my-5" Justify="Justify.Center">
-    <MudCheckBox Class="text-wrap text-break" Size="Size.Small" @bind-Value="@_keepAspectRatio" Label="Keep Aspect Ratio?" Color="Color.Primary"></MudCheckBox>
-    <MudCheckBox Size="Size.Small" @bind-Value="@_resize" Label="Resize?" Color="Color.Secondary"></MudCheckBox>
-</MudStack>
-
-<MudStack>
-
 </MudStack>
 
 <MudPaper Elevation="25" Class="my-5" Outlined="true">
@@ -137,10 +129,8 @@
     IBrowserFile? _file = default;
     private static List<ExtractedImage> _extractedImages = new();
 
-    private bool _resize { get; set; }
     private bool _loading { get; set; } 
     private bool _downloading { get; set; }
-    private bool _keepAspectRatio { get; set; }
 
     private void UploadDocument(IBrowserFile file)
     {
@@ -174,7 +164,7 @@
             using var imageMemoryStream = new MemoryStream();
             await _file.OpenReadStream(ExtensionsOptions.Value.MaxFileSize).CopyToAsync(imageMemoryStream);
 
-            var result = ExtractorService.ExtractImagesFromDocument(imageMemoryStream, _file.Name, _resize, keepAspectRatio: _keepAspectRatio);
+            var result = ExtractorService.ExtractImagesFromDocument(imageMemoryStream, _file.Name);
 
             if (!result.Success)
             {
