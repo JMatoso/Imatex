@@ -4,11 +4,11 @@ using Tesseract;
 
 namespace Imatex.Web.Services.Ocr;
 
-public class TextConverter : IDisposable, ITextConverter
+public class TextConverterService : IDisposable, ITextConverterService
 {
     private readonly TesseractEngine _tesseractEngine;
 
-    public TextConverter()
+    public TextConverterService()
     {
         _tesseractEngine = new TesseractEngine(@"./tessdata", "eng+por+fra+spa+ita", EngineMode.Default);
     }

@@ -1,10 +1,276 @@
 ﻿@page "/image-extractor-from-document"
 
-<MetaTags PageTitle="Image To Text" />
+@inject ILogger<Extractor> Logger
+@inject Services.Extractor.IImageExtractorService ExtractorService
+@inject Services.Compression.IZipCompressorService ZipCompressorService
+
+<MetaTags PageTitle="Image Extractor" />
 
 <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Extract Images From Documents</MudText>
-<MudText Align="Align.Center">Effortlessly extract images from documents! Upload your file and retrieve images quickly and easily.</MudText>
+<MudText Align="Align.Center">Effortlessly <span class="text-primary">extract images</span> from documents! Upload your file and <span class="text-primary">retrieve images</span> quickly and easily.</MudText>
+
+<MudStack Class="w-100">
+    <MudFileUpload T="IBrowserFile" Accept="@ExtensionsOptions.Value.GetAllowedDocumentExtensionsAsString()" 
+                   FilesChanged="UploadDocument" 
+                   AppendMultipleFiles="false"
+                   MaximumFileCount="@ExtensionsOptions.Value.MaxFileCount">
+        <ButtonTemplate>
+            <MudPaper Height="200px"
+                      Outlined="false"
+                      Class="text-center"
+                      Elevation="0">
+
+                <MudButton HtmlTag="label"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           Class="my-7"
+                           StartIcon="@Icons.Material.Filled.CloudUpload"
+                           for="@context.Id">
+                    Select a Document to Upload
+                </MudButton>
+
+                <MudText Typo="Typo.body2" Align="Align.Center">
+                    Maximum file size: <strong>@ExtensionsOptions.Value.MaxFileSize.Bytes()</strong>
+                </MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center">
+                    Allowed extensions: @ExtensionsOptions.Value.GetAllowedDocumentExtensionsAsString(" | ").ToLower()
+                </MudText>
+                
+                @if (_file is not null)
+                {
+                    <MudChip Class="text-center my-5 text-wrap"
+                             Size="Size.Medium"
+                             Color="Color.Primary"
+                             Variant="Variant.Text"
+                             Text="@($"{_file.Name} ({_file.Size.Bytes()})")"
+                             Icon="@Icons.Material.Outlined.AttachFile" />
+                }                
+            </MudPaper>
+        </ButtonTemplate>
+    </MudFileUpload>
+</MudStack>
+
+<MudStack Row="true" Class="my-5" Justify="Justify.Center">
+    <MudCheckBox Class="text-wrap text-break" Size="Size.Small" @bind-Value="@_keepAspectRatio" Label="Keep Aspect Ratio?" Color="Color.Primary"></MudCheckBox>
+    <MudCheckBox Size="Size.Small" @bind-Value="@_resize" Label="Resize?" Color="Color.Secondary"></MudCheckBox>
+</MudStack>
+
+<MudStack>
+
+</MudStack>
+
+<MudPaper Elevation="25" Class="my-5" Outlined="true">
+    <MudToolBar>
+        <MudText Typo="Typo.subtitle1" Color="Color.Inherit">
+            <strong>@_extractedImages.Count</strong> Images Found
+        </MudText>
+        <MudSpacer />
+        <MudTooltip Text="Extract Images From Document">
+            <MudIconButton Icon="@Icons.Material.Outlined.PlayCircleOutline"
+                           Color="Color.Primary"
+                           OnClick="StartExtractionAsync"
+                           Disabled="@(_file is null || _loading)" />
+        </MudTooltip>
+        <MudTooltip Text="Download All Images">
+            <MudIconButton Icon="@Icons.Material.Outlined.CloudDownload"
+                           Color="Color.Info"
+                           Disabled="@(!_extractedImages.Any() || _downloading)"
+                           OnClick="DownloadAll"/>
+        </MudTooltip>
+        <MudTooltip Text="Delete All Images">
+            <MudIconButton Disabled="@(!_extractedImages.Any())"
+                           Icon="@Icons.Material.Outlined.DeleteSweep"
+                           Color="Color.Error"
+                           OnClick="DeleteImages" />
+        </MudTooltip>
+    </MudToolBar>
+</MudPaper>
+
+<MudStack>
+    @if (_loading)
+    {
+        <MudGrid Class="mb-3">
+            @for (var i = 0; i < 4; i++)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3" xl="3" xxl="3">
+                    <MudCard Outlined="true" Elevation="0">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                        <MudCardContent>
+                            <MudSkeleton Width="80%" />
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudSkeleton Width="105px" Height="40px" Class="ml-3" />
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    @if (_extractedImages.Any())
+    {
+        @foreach (var extracted in _extractedImages.OrderByDescending(x => x.CreatedAt).GroupBy(x => x.BaseFileName))
+        {
+            <MudText Class="d-block text-uppercase fw-bold" Typo="Typo.caption">@extracted.Key</MudText>
+            <MudGrid Class="mb-3">
+                @foreach (var image in extracted)
+                {
+                    <MudItem xs="12" sm="6" md="4" lg="3" xl="3" xxl="3">
+                        <MudCard Outlined="true" Elevation="0">
+                            <img class="resized-image rounded-top" src="@image.ImageBase64" alt="@image.FileName" />
+                            <MudCardContent>
+                                <MudText Typo="Typo.body2" Class="card-title text-short">@image.FileName</MudText>
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudButton download="@image.FileName" Href="@image.ImageBase64" Variant="Variant.Text" Color="Color.Primary">Download</MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    }
+</MudStack>
 
 @code {
+    IBrowserFile? _file = default;
+    private static List<ExtractedImage> _extractedImages = new();
 
+    private bool _resize { get; set; }
+    private bool _loading { get; set; } 
+    private bool _downloading { get; set; }
+    private bool _keepAspectRatio { get; set; }
+
+    private void UploadDocument(IBrowserFile file)
+    {
+        if (!ExtensionsOptions.Value.IsAllowedDocumentExtension(Path.GetExtension(file.Name)))
+        {
+            Snackbar.Add($"The file {file.Name} is not allowed.", Severity.Warning);
+            return;
+        }
+
+        if (file.Size > ExtensionsOptions.Value.MaxFileSize)
+        {
+            Snackbar.Add($"The file {file.Name} is too large.", Severity.Warning);
+            return;
+        }
+
+        _file = file;
+    }
+
+    private async Task StartExtractionAsync()
+    {
+        if (_file is null)
+        {
+            Snackbar.Add("Please upload a document first.", Severity.Warning);
+            return;
+        }
+
+        _loading = true;
+
+        try
+        {
+            using var imageMemoryStream = new MemoryStream();
+            await _file.OpenReadStream(ExtensionsOptions.Value.MaxFileSize).CopyToAsync(imageMemoryStream);
+
+            var result = ExtractorService.ExtractImagesFromDocument(imageMemoryStream, _file.Name, _resize, keepAspectRatio: _keepAspectRatio);
+
+            if (!result.Success)
+            {
+                Snackbar.Add(result.ErrorMessage, Severity.Error);
+                return;
+            }
+
+            if (!result.Images.Any())
+            {
+                Snackbar.Add(result.ErrorMessage, Severity.Info);
+                return;
+            }
+
+            foreach (var image in result.Images)
+            {
+                using var ms = new MemoryStream();
+                image.CopyTo(ms);
+                string base64Image = Convert.ToBase64String(ms.ToArray());
+
+                _extractedImages.Add(new ExtractedImage()
+                {
+                    Image = image,
+                    BaseFileName = result.FileName,
+                    FileName = $"{_file.Name}-image-{DateTime.Now.Ticks}".ToFriendlyUrl() + ".png",
+                    ImageBase64 = string.Format("data:image/png;base64,{0}", base64Image)
+                });
+            }
+        }
+        catch (OutOfMemoryException)
+        {
+            Snackbar.Add("Please try again with a smaller document.", Severity.Warning);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(e.Message);
+            Snackbar.Add("Something went wrong, try again.", Severity.Error);
+        }
+        finally
+        {
+            _file = null;
+            _loading = false;
+        }
+    }
+
+    private async Task DeleteImages()
+    {
+        var parameters = new DialogParameters<DialogMessage>();
+        parameters.Add(x => x.ContentText, "Do you really want to delete these images? This process cannot be undone.");
+        parameters.Add(x => x.ButtonText, "Delete");
+        parameters.Add(x => x.Color, Color.Error);
+
+        var dialog = await Dialog.ShowAsync<DialogMessage>("Delete Images?", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            _extractedImages.Clear();
+            StateHasChanged();
+        }
+    }
+
+    private void DownloadAll()
+    {
+        if (!_extractedImages.Any())
+        {
+            Snackbar.Add("No images to download.", Severity.Info);
+            return;
+        }
+
+        _downloading = true;
+
+        var byteArray = ZipCompressorService.CreateZipFileInMemory(_extractedImages);
+
+        if (byteArray is null || !byteArray.Any() || byteArray.Length <= 0)
+        {
+            _downloading = false;
+            Snackbar.Add("Ooops. Something bad happened, try again!");
+            return;
+        }
+
+        string base64Image = Convert.ToBase64String(byteArray);
+        string formattedBase64Url = string.Format("data:application/zip;base64,{0}", base64Image);
+
+        Snackbar.Add("Hey, your download is ready!", Severity.Normal, config =>
+        {
+            config.Action = "Download";
+            config.ActionColor = Color.Primary;
+            config.RequireInteraction = true;
+            config.ShowCloseIcon = false;
+            config.Onclick = snackbar =>
+            {
+                Navigator.NavigateTo(formattedBase64Url);
+                return Task.CompletedTask;
+            };
+        });
+
+        _downloading = false;
+    }
 }

@@ -3,7 +3,7 @@ using System.Drawing;
 
 namespace Imatex.Web.Services.Ocr
 {
-    public interface ITextConverter
+    public interface ITextConverterService
     {
         void Dispose();
 

@@ -1,6 +1,8 @@
 using Blazor.Analytics;
 using Imatex.Web.Helpers.Interop;
 using Imatex.Web.Options;
+using Imatex.Web.Services.Compression;
+using Imatex.Web.Services.Extractor;
 using Imatex.Web.Services.Ocr;
 using MudBlazor;
 using MudBlazor.Services;
@@ -23,8 +25,10 @@ builder.Services.AddMudServices(config =>
 builder.Services.AddServerSideBlazor();
 builder.Services.AddGoogleAnalytics(builder.Configuration["GoogleTagId"]);
 
-builder.Services.AddScoped<ITextConverter, TextConverter>();
 builder.Services.AddScoped<IApplicationInterop, ApplicationInterop>();
+builder.Services.AddScoped<IZipCompressorService, ZipCompressorService>();
+builder.Services.AddScoped<ITextConverterService, TextConverterService>();
+builder.Services.AddScoped<IImageExtractorService, ImageExtractorService>();
 builder.Services.Configure<ExtensionsOptions>(builder.Configuration.GetSection(ExtensionsOptions.ExtensionOptionsKey));
 
 var app = builder.Build();

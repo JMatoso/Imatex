@@ -2,12 +2,12 @@
 @using MudBlazor
 
 @inject ILogger<Index> Logger
-@inject Services.Ocr.ITextConverter Engine
+@inject Services.Ocr.ITextConverterService Engine
 
 <MetaTags PageTitle="Image To Text" />
 
 <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Image To Text</MudText>
-<MudText Align="Align.Center">Turn your images into text instantly! Upload a photo and get a text file in seconds. It's that easy!</MudText>
+<MudText Align="Align.Center">Turn your <span class="text-primary">images into text</span> instantly! Upload a photo and <span class="text-primary">get a text</span> in seconds. It's that easy!</MudText>
 
 <MudStack Class="w-100">
     <MudFileUpload T="IReadOnlyList<IBrowserFile>"
@@ -78,7 +78,7 @@
                 Confidence: @extractedText.Confidence
             </MudText>
             <MudSpacer />
-            <MudIconButton OnClick="async () => await Application.CopyToClipboardAsync(extractedText.Text)" Icon="@Icons.Material.Filled.ContentCopy" aria-label="Copy to clipboard"></MudIconButton>
+            <MudIconButton OnClick="async () => await Application.CopyToClipboardAsync(extractedText.Text)" Icon="@Icons.Material.Outlined.ContentCopy" aria-label="Copy to clipboard"></MudIconButton>
         </MudPaper>
         <MudText Typo="Typo.body1">
             @extractedText.Text
@@ -135,6 +135,12 @@
             }
 
             _extractedTexts.AddRange(Engine.GetTextFromImages(images.ToArray()));
+
+            if(_extractedTexts.Count == 0)
+            {
+                Snackbar.Add("No text was extracted from the images.", Severity.Info);
+            }
+
             Clear();
         }
         catch (OutOfMemoryException)

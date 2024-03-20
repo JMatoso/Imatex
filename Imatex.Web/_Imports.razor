@@ -13,6 +13,7 @@
 @using Imatex.Web.Shared
 @using Imatex.Web.Options
 @using Imatex.Web.Services
+@using Imatex.Web.Extensions
 @using Imatex.Web.Helpers.Interop
 
 @using MudBlazor
@@ -23,6 +24,7 @@
 
 @inject ISnackbar Snackbar
 @inject IAnalytics Analytics
+@inject IDialogService Dialog
 @inject NavigationManager Navigator
 @inject IApplicationInterop Application
 @inject IOptions<ExtensionsOptions> ExtensionsOptions
