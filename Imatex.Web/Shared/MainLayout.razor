@@ -10,19 +10,27 @@
                    Position="DialogPosition.Center"
                    CloseOnEscapeKey="true" />
 
-<MudLayout>
-    <MudAppBar Elevation="1">
+<MudLayout Class="flex-content">
+    <MudAppBar Elevation="1" ToolBarClass="navbar navbar-expand-lg bg-body-tertiary" WrapContent="true">
         <MudText Typo="Typo.h6">Imatex</MudText>
         <NavMenu />
         <MudSpacer />
         <MudIconButton Href="https://github.com/JMatoso/Imatex" Target="_blank" Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" />
     </MudAppBar>
-    <MudMainContent>
+    
+    <MudMainContent Class="full-flex-content">
         <MudContainer Class="mt-16">
             @Body
             <MudSnackbarProvider />
         </MudContainer>
     </MudMainContent>
+
+    <MudPaper Outlined="false" Elevation="0" Class="mt-5">
+        <MudContainer Class="text-center footer d-flex justify-content-between p-3">
+            <MudText Typo="Typo.body2">Made with <MudIcon Icon="@Icons.Material.Outlined.Favorite" Color="Color.Error" /> by <MudLink Href="https://www.github.com/JMatoso" Target="_blank">José Matoso</MudLink></MudText>
+            <MudText Typo="Typo.body2">©@DateTime.UtcNow.Year - Imatex</MudText>
+        </MudContainer>
+    </MudPaper>
 </MudLayout>
 
 @code {

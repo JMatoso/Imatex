@@ -1,0 +1,183 @@
+﻿@page "/downloader"
+
+@using Imatex.Web.Extensions
+@using Imatex.Web.Models.SocialMedias
+@using Imatex.Web.Services.SocialMedias
+@using Majorsoft.Blazor.Components.Timer
+
+@inject ITikTokService _tikTokService
+@inject IYouTubeService _youTubeService
+
+<MetaTags PageTitle="Social Media Downloader" />
+<MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Download Video From Social Media</MudText>
+<MudText Align="Align.Center">Effortlessly <span class="text-primary">download video</span> from your <span class="text-primary">social medias!</span></MudText>
+
+<MudStack Class="w-100 mt-5">
+    <MudPaper Outlined="false"
+              Height="100"
+              Class="text-center p-3"
+              Elevation="0">
+
+        <MudTextField @bind-Value="_videoUrl"
+                      Label="Video Link"
+                      Disabled="@_loading"
+                      InputType="InputType.Url"
+                      InputMode="InputMode.url"
+                      AdornmentIcon="@Icons.Material.Outlined.ContentPaste"
+                      Adornment="Adornment.End"
+                      Placeholder="@_placeholder"
+                      Variant="Variant.Outlined"
+                      OnAdornmentClick="async () => _videoUrl = await Application.PasteFromClipboardAsync()"
+                      Clearable="true" />
+
+        <MudToolBar DisableGutters="true"
+                    Class="relative d-flex justify-end gap-4 z-30">
+            <MudButton Disabled="@(_loading || string.IsNullOrWhiteSpace(_videoUrl))" OnClick="@GetVideoAsync" Variant="Variant.Filled" Color="Color.Primary">
+                @if (_loading)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                    <MudText Class="ms-2">Processing</MudText>
+                }
+                else
+                {
+                    <MudText>Get Video</MudText>
+                }
+            </MudButton>
+            <MudButton OnClick="@Clear"
+                       Color="Color.Error"
+                       Disabled="@(string.IsNullOrWhiteSpace(_videoUrl))"
+                       Variant="Variant.Filled">
+                Clear
+            </MudButton>
+        </MudToolBar>
+    </MudPaper>
+</MudStack>
+
+@if (_videoResult != default)
+{
+    <MudStack Class="w-100 mt-5">
+        <MudGrid Spacing="2" Justify="Justify.Center">
+            <MudItem xs="12" sm="3">
+                <MudImage Src="@_videoResult.ThumbnailUrl"
+                            Height="300"
+                            Width="300"
+                            Alt="@($"{_videoResult.Title} Thumbnail")"
+                            ObjectFit="ObjectFit.Cover"
+                            ObjectPosition="ObjectPosition.Center"
+                            Class="rounded-lg w-100" />
+            </MudItem>
+            <MudItem xs="12" sm="9">
+                <MudGrid Spacing="2">
+                    @{
+                        int count = 0;
+                        foreach (var video in _videoResult.VideoInfos)
+                        {
+                            var color = Application.GetRandomColor(count);
+
+                            <MudItem>
+                                <MudLink Target="_blank" Href="@video.Url">
+                                    <MudCard Style="@($"background-color: {color}; width: 116.9px")">
+                                        <MudCardContent>
+                                            <MudText>@video.Quality</MudText>
+                                            <MudText Typo="Typo.body2">@video.Size.Bytes()</MudText>
+                                            <MudText Typo="Typo.body2">@(video.IsAudio ? "Audio" : "Video")</MudText>
+                                            @if (video.ServerCount is not null)
+                                            {
+                                                <MudText Typo="Typo.body2">@($"Server {video.ServerCount}")</MudText>
+                                            }
+                                        </MudCardContent>
+                                    </MudCard>
+                                </MudLink>
+                            </MudItem>
+
+                            count++;
+                        }
+                    }
+                </MudGrid>
+            </MudItem>
+        </MudGrid>
+    </MudStack>
+}
+
+@if (_videoResult != null)
+{
+    <MudStack Class="w-100 mt-5">
+        <MudText Typo="Typo.h6">
+            <MudLink Href="@_videoResult.OriginalVideoUrl" Target="_blank">@_videoResult.Title</MudLink>
+            - @_videoResult.AuthorNickname (@_videoResult.AuthorUsername)
+            <MudChip Label="true" Size="Size.Small" Icon="@Icons.Material.Outlined.AccessTime" Variant="Variant.Text">@_videoResult.Duration.GetValueOrDefault().ToString(@"dd\:hh\:mm\:ss")</MudChip>
+        </MudText>
+        <MudText Typo="Typo.caption">@(_videoResult.Keywords.AsString())</MudText>
+        <MudText Typo="Typo.body2" Class="text-break">
+            @(_videoResult.Description.ToMarkupHtml())
+        </MudText>
+    </MudStack>
+}
+
+<AdvancedTimer IsEnabled="true"
+               IntervalInMilisec="3000"
+               Occurring="Times.Infinite()"
+               AutoStart="true"
+               OnIntervalElapsed="() => _placeholder = SocialMediaExtensions.GetRandomExample()" />
+
+@code {
+    bool _loading = false;
+    string _videoUrl = string.Empty;
+    VideoResultBase _videoResult = default!;
+    string _placeholder = SocialMediaExtensions.GetRandomExample();
+
+    async Task GetVideoAsync()
+    {
+        _loading = true;
+        if (string.IsNullOrWhiteSpace(_videoUrl))
+        {
+            _loading = false;
+            Snackbar.Add("Please enter a valid video link.", Severity.Warning);
+            return;
+        }
+        await ProcessCommandAsync();
+        _loading = false;
+        Clear();
+    }
+
+    void Clear()
+    {
+        _videoUrl = string.Empty;
+    }
+
+    public async Task ProcessCommandAsync()
+    {
+        if (!_videoUrl.TryGetValidLink(out var uri))
+        {
+            Snackbar.Add("Please enter a valid video link.", Severity.Warning);
+            return;
+        }
+
+        switch (uri.GetSocialMediaLink())
+        {
+            case SocialMedia.YouTube:
+                await DownloadYouTubeVideoAsync(uri!.ToString());
+                break;
+            case SocialMedia.TikTok:
+                await DownloadTikTokVideoAsync(uri!.ToString());
+                break;
+            case SocialMedia.Facebook:
+                break;
+            case SocialMedia.Instagram:
+                break;
+            default:
+                _ = Snackbar.Add("This social media is not supported yet.", Severity.Warning);
+                break;
+        }
+    }
+
+    async Task DownloadYouTubeVideoAsync(string url)
+    {
+        _videoResult = await _youTubeService.DownloadVideoAsync(url);
+    }
+
+    async Task DownloadTikTokVideoAsync(string url)
+    {
+        _videoResult = await _tikTokService.DownloadVideoAsync(url);
+    }
+}

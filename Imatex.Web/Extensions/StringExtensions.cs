@@ -1,46 +1,70 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Text.RegularExpressions;
+﻿using Imatex.Bot.Extensions;
+using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace Imatex.Web.Extensions;
 
-public static class StringExtensions
+public static partial class StringExtensions
 {
     [return: NotNullIfNotNull(nameof(value))]
     public static string? ToFriendlyUrl(this string value)
     {
         if (string.IsNullOrEmpty(value)) return value;
 
-        value = value.RemoveSpecialChars();
+        value = value.Normalize(NormalizationForm.FormD);
 
-        value = Regex.Replace(value, "[^a-z0-9\\s-]", "");
-        value = Regex.Replace(value, "[\\s-]+", " ");
-        value = Regex.Replace(value, "\\s", "-");
+        value = RegexPatterns.NumbersRegex().Replace(value, "");
+        value = RegexPatterns.HyphenRegex().Replace(value, "-");
 
-        return value.ToLower();
+        return value.Trim('-').ToLower();
     }
 
-    private static string RemoveSpecialChars(this string value)
+    public static bool TryGetValidLink(this string? text, out Uri? uri)
     {
-        value = value.ToLower();
-        value = Regex.Replace(value, "[àåáâäãåąā]", "a");
-        value = Regex.Replace(value, "[çćčĉ]", "c");
-        value = Regex.Replace(value, "[đ]", "d");
-        value = Regex.Replace(value, "[èéêëę]", "e");
-        value = Regex.Replace(value, "[ğĝ]", "g");
-        value = Regex.Replace(value, "[ĥ]", "h");
-        value = Regex.Replace(value, "[ìíîïı]", "i");
-        value = Regex.Replace(value, "[ĵ]", "j");
-        value = Regex.Replace(value, "[ł]", "l");
-        value = Regex.Replace(value, "[ñń]", "n");
-        value = Regex.Replace(value, "[òóôõöøőð]", "o");
-        value = Regex.Replace(value, "[ř]", "r");
-        value = Regex.Replace(value, "[śşšŝ]", "s");
-        value = Regex.Replace(value, "[ùúûüŭů]", "u");
-        value = Regex.Replace(value, "[ýÿ]", "y");
-        value = Regex.Replace(value, "[żźž]", "z");
-        value = Regex.Replace(value, "[ß]", "ss");
-        value = Regex.Replace(value, "[þ]", "th");
+        uri = null;
 
-        return value.Trim();
+        if (string.IsNullOrEmpty(text)) return false;
+        if (!RegexPatterns.HttpRegex().IsMatch(text)) return false;
+
+        try
+        {
+            uri = new Uri(text, UriKind.Absolute);
+            return true;
+        }
+        catch (UriFormatException)
+        {
+            return false;
+        }
+    }
+
+    public static string GenerateFileNameWithExtension(this string? fileName, string extension, string? sufix = "media")
+    {
+        fileName ??= "file";
+        return $"{fileName}-{sufix}-{DateTime.Now.Ticks}".ToFriendlyUrl() + extension;
+    }
+
+    public static MarkupString ToMarkupHtml(this string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return new MarkupString(string.Empty);
+
+        var builder = new StringBuilder(text);
+
+        builder.Replace("<", "&lt;");
+        builder.Replace(">", "&gt;");
+        builder.Replace("\n", "<br>");
+
+        return new MarkupString(builder.ToString());
+    }
+
+    public static string[]? GetHashTags(this string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return [];
+        return text.Split(" ").Where(x => x.StartsWith('#')).Select(x => x).ToArray();
+    }
+
+    public static string AsString(this IEnumerable<string>? text)
+    {
+        return string.Join(" ", text ?? []);
     }
 }

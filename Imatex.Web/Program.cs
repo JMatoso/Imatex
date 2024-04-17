@@ -4,6 +4,7 @@ using Imatex.Web.Options;
 using Imatex.Web.Services.Compression;
 using Imatex.Web.Services.Extractor;
 using Imatex.Web.Services.Ocr;
+using Imatex.Web.Services.SocialMedias;
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -22,13 +23,18 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.SnackbarVariant = Variant.Filled;
     config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
 });
+builder.Services.AddHttpClient();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddGoogleAnalytics(builder.Configuration["GoogleTagId"]);
 
+builder.Services.AddScoped<ITikTokService, TikTokService>();
+builder.Services.AddScoped<IYouTubeService, YouTubeService>();
 builder.Services.AddScoped<IApplicationInterop, ApplicationInterop>();
 builder.Services.AddScoped<IZipCompressorService, ZipCompressorService>();
 builder.Services.AddScoped<ITextConverterService, TextConverterService>();
 builder.Services.AddScoped<IImageExtractorService, ImageExtractorService>();
+builder.Services.Configure<TikTokOptions>(builder.Configuration.GetSection(TikTokOptions.TikTokOptionsKey));
 builder.Services.Configure<ExtensionsOptions>(builder.Configuration.GetSection(ExtensionsOptions.ExtensionOptionsKey));
 
 var app = builder.Build();
