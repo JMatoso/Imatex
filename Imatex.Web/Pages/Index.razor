@@ -94,6 +94,12 @@
     private List<ExtractedTextResult> _extractedTexts = new();
     private readonly List<(IBrowserFile file, string imageName)> _imageFiles = new();
 
+    protected override void OnInitialized()
+    {
+        Analytics.TrackNavigation(Navigator.Uri);
+        base.OnInitialized();
+    }
+
     private void OnInputFileChanged(InputFileChangeEventArgs e)
     {
         ClearDragClass();
@@ -114,8 +120,6 @@
 
             _imageFiles.Add((file, file.Name));
         }
-
-        Analytics.TrackEvent("images_uploaded", new { value = _imageFiles.Count });
     }
 
     private async Task UploadAsync()

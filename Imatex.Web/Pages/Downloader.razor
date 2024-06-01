@@ -126,6 +126,12 @@
     VideoResultBase _videoResult = default!;
     string _placeholder = SocialMediaExtensions.GetRandomExample();
 
+    protected override void OnInitialized()
+    {
+        Analytics.TrackNavigation(Navigator.Uri);
+        base.OnInitialized();
+    }
+
     async Task GetVideoAsync()
     {
         _loading = true;

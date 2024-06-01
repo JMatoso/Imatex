@@ -132,6 +132,12 @@
     private bool _loading { get; set; } 
     private bool _downloading { get; set; }
 
+    protected override void OnInitialized()
+    {
+        Analytics.TrackNavigation(Navigator.Uri);
+        base.OnInitialized();
+    }
+
     private void UploadDocument(IBrowserFile file)
     {
         if (!ExtensionsOptions.Value.IsAllowedDocumentExtension(Path.GetExtension(file.Name)))
