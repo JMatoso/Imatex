@@ -5,10 +5,8 @@ USER app
 WORKDIR /app
 EXPOSE 10000
 
-RUN /bin/bash -c 'echo "deb http://archive.ubuntu.com/ubuntu bionic universe" >> /etc/apt/sources.list'
-
 RUN apt-get update && \
-    apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev && \
+    apt install -y tesseract-ocr libtesseract-dev libleptonica-dev && \
     rm -rf /var/lib/apt/lists/*
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
