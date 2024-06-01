@@ -16,8 +16,11 @@ COPY . .
 WORKDIR "/src/Imatex.Web"
 RUN dotnet build "./Imatex.Web.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "./Imatex.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false 
+
 FROM base AS final
 WORKDIR /app
-COPY --from=build /app/publish .
-COPY --from=leptonica-builder /leptonica-build/leptonica-1.82.0/src/.libs/leptonica-1.82.0.so /app/publish/x64/
+COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "Imatex.Web.dll"]
