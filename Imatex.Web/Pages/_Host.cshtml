@@ -46,6 +46,17 @@
 
     <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
 </head>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-W50W8Z5F6H"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-W50W8Z5F6H');
+</script>
+
 <body>
     <component type="typeof(App)" render-mode="ServerPrerendered" />
     <component type="typeof(Imatex.Web.Shared.MetaTags)" render-mode="ServerPrerendered" />

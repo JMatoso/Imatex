@@ -4,15 +4,8 @@ WORKDIR /app
 EXPOSE 10000
 
 FROM ubuntu:latest AS leptonica-builder
-WORKDIR /leptonica-build
-RUN apt-get update && \
-    apt-get install -y wget build-essential && \
-    wget http://www.leptonica.org/source/leptonica-1.82.0.tar.gz && \
-    tar -zxvf leptonica-1.82.0.tar.gz && \
-    cd leptonica-1.82.0 && \
-    ./configure && \
-    make && \
-    mv src/.libs/libleptonica.so src/.libs/leptonica-1.82.0.so
+RUN apt install tesseract-ocr
+RUN apt install libleptonica-dev
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
