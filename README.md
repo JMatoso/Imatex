@@ -74,4 +74,4 @@ The site is hosted on Render and the database on Aiven. Follow these steps for d
 </a>
 
 ## Notes
-Render free server might not be enough to run the app properly, but you can still try. Good Luck! :)
+Render free instances might not be enough to run the app properly, but you can still try. Good Luck! :)
