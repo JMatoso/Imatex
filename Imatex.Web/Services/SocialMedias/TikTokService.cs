@@ -13,9 +13,10 @@ public interface ITikTokService
     Task<VideoResultBase> DownloadVideoAsync(string? videoUrl);
 }
 
-public partial class TikTokService(IHttpClientFactory httpClientFactory, IOptions<TikTokOptions> tikTokOptions) : ITikTokService
+public partial class TikTokService(IHttpClientFactory httpClientFactory, IOptions<TikTokOptions> tikTokOptions, ILogger<TikTokService> logger) : ITikTokService
 {
     readonly Random _random = new();
+    readonly ILogger<TikTokService> _logger = logger;
     readonly CancellationToken _cancellationToken = new();
     readonly TikTokOptions _tiktokOptions = tikTokOptions.Value;
     readonly HttpClient _client = httpClientFactory.CreateClient();
@@ -70,26 +71,23 @@ public partial class TikTokService(IHttpClientFactory httpClientFactory, IOption
 
             if (!response.IsSuccessStatusCode)
             {
-                return videoResult.SetError($"Failed to fetch video for Video ID: {videoId}. Status code: {response.StatusCode}");
+                _logger.LogError("Failed to fetch video for Video ID: {VideoId}. Status code: {StatusCode}", videoId, response.StatusCode);
+                return videoResult.SetError($"Failed to fetch video for Video ID: {videoId}.");
             }
 
             videoResult.OriginalVideoUrl = videoUrl!;
             ExtractDownloadUrl(content, videoResult);
 
-            if (!videoResult.Success)
-            {
-                videoResult.SetError($"Failed to extract the download URL from the API response.\n{videoResult.ErrorMessage}");
-            }
-
             return videoResult;
         }
         catch (Exception ex)
         {
-            return videoResult.SetError($"Exception occurred: {ex.Message}");
+            _logger.LogError(ex, "Exception occurred while fetching video for Video ID: {VideoId}", videoId);
+            return videoResult.SetError("Exception occurred, try again.");
         }
     }
 
-    static void ExtractDownloadUrl(string apiResponse, VideoResultBase videoResult)
+    void ExtractDownloadUrl(string apiResponse, VideoResultBase videoResult)
     {
         try
         {
@@ -135,7 +133,8 @@ public partial class TikTokService(IHttpClientFactory httpClientFactory, IOption
         }
         catch (Exception ex)
         {
-            videoResult.SetError($"Error parsing JSON response: {ex.Message}");
+            videoResult.SetError($"Error downloading video, try again.");
+            _logger.LogError(ex, "Error parsing JSON response: {Message}", ex.Message);
         }
     }
 }

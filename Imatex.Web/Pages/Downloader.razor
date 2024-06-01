@@ -159,27 +159,27 @@
             return;
         }
 
-        switch (uri.GetSocialMediaLink())
+        VideoResultBase result = uri.GetSocialMediaLink() switch
         {
-            case SocialMedia.YouTube:
-                await DownloadYouTubeVideoAsync(uri!.ToString());
-                break;
-            case SocialMedia.TikTok:
-                await DownloadTikTokVideoAsync(uri!.ToString());
-                break;
-            case SocialMedia.Facebook:
-                break;
-            case SocialMedia.Instagram:
-                break;
-            default:
-                _ = Snackbar.Add("This social media is not supported yet.", Severity.Warning);
-                break;
-        }
+            SocialMedia.YouTube => await _youTubeService.DownloadVideoAsync(uri!.ToString()),
+            SocialMedia.TikTok => await _tikTokService.DownloadVideoAsync(uri!.ToString()),
+            SocialMedia.Facebook => default!,
+            SocialMedia.Instagram => default!,
+            _ => new VideoResultBase().SetError("This social media is not supported yet.")
+        };
+
+        SetDownloadResult(result);
     }
 
-    async Task DownloadYouTubeVideoAsync(string url)
+    void SetDownloadResult(VideoResultBase result)
     {
-        _videoResult = await _youTubeService.DownloadVideoAsync(url);
+        if (result.Success)
+        {
+            _videoResult = result;
+            return;
+        }
+
+        Snackbar.Add(result.ErrorMessage, Severity.Error);        
     }
 
     async Task DownloadTikTokVideoAsync(string url)

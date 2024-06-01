@@ -8,8 +8,9 @@ public interface IYouTubeService
     Task<VideoResultBase> DownloadVideoAsync(string url);
 }
 
-public class YouTubeService(IHttpClientFactory httpClientFactory) : IYouTubeService
+public class YouTubeService(IHttpClientFactory httpClientFactory, ILogger<YouTubeService> logger) : IYouTubeService
 {
+    readonly ILogger<YouTubeService> _logger = logger;
     readonly CancellationToken _cancellationToken = new();
     readonly YoutubeClient _youtubeClient = new(httpClientFactory.CreateClient());
 
@@ -70,7 +71,8 @@ public class YouTubeService(IHttpClientFactory httpClientFactory) : IYouTubeServ
         }
         catch (Exception ex)
         {
-            return videoResult.SetError($"Error downloading video from YouTube: {ex.Message}");
+            _logger.LogError(ex, "Error downloading video from YouTube.");
+            return videoResult.SetError("Error downloading video from YouTube.");
         }
     }
 }
