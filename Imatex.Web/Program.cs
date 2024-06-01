@@ -10,6 +10,16 @@ using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Render Configuration
+if (builder.Environment.IsProduction() || builder.Environment.IsStaging())
+{
+    builder.WebHost.ConfigureKestrel((context, serverOptions) =>
+    {
+        var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+        serverOptions.ListenAnyIP(int.Parse(port));
+    });
+}
+
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddMudServices(config =>
