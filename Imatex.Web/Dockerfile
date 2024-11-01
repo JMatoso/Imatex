@@ -45,7 +45,7 @@ RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-COPY --from=build /src/Imatex.Web/runtimes ./runtimes
+#COPY --from=build /src/Imatex.Web/runtimes ./runtimes
 
 # Set the entrypoint
 ENTRYPOINT ["dotnet", "Imatex.Web.dll"]
