@@ -1,27 +1,46 @@
 ﻿@inherits LayoutComponentBase
 
 <MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" />
-
+<MudPopoverProvider />
+<MudSnackbarProvider />
 <MudDialogProvider FullWidth="true"
                    MaxWidth="MaxWidth.ExtraSmall"
                    CloseButton="false"
-                   DisableBackdropClick="true"
                    NoHeader="false"
                    Position="DialogPosition.Center"
                    CloseOnEscapeKey="true" />
 
 <MudLayout Class="flex-content">
-    <MudAppBar Elevation="1" ToolBarClass="navbar navbar-expand-lg bg-body-tertiary" WrapContent="true">
-        <MudText Typo="Typo.h6">Imatex</MudText>
-        <NavMenu />
-        <MudSpacer />
-        <MudIconButton Href="https://github.com/JMatoso/Imatex" Target="_blank" Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" />
-    </MudAppBar>
+    <MudPaper Elevation="1">
+        <MudToolBar WrapContent="true" Class="navbar navbar-expand-lg">
+            <MudButton Href="/"
+                       Size="Size.Small"
+                       Variant="Variant.Text"
+                       Color="Color.Inherit">
+                Imatex
+            </MudButton>
+
+            <MudButton Href="/image-extractor-from-document"
+                       Size="Size.Small"
+                       Variant="Variant.Text"
+                       Color="Color.Inherit">
+                Extractor
+            </MudButton>
+
+            <MudButton Href="/downloader"
+                       Size="Size.Small"
+                       Variant="Variant.Text"
+                       Color="Color.Inherit">
+                Downloader
+            </MudButton>
+            <MudSpacer />
+            <MudIconButton Href="https://github.com/JMatoso/Imatex" Target="_blank" Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" />
+        </MudToolBar>
+    </MudPaper>
     
     <MudMainContent Class="full-flex-content">
         <MudContainer Class="mt-16">
             @Body
-            <MudSnackbarProvider />
         </MudContainer>
     </MudMainContent>
 

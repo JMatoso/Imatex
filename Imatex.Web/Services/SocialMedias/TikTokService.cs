@@ -1,8 +1,8 @@
-﻿using Imatex.Web.Extensions;
+﻿using CommunityToolkit.HighPerformance.Buffers;
+using Imatex.Web.Extensions;
 using Imatex.Web.Models.SocialMedias;
 using Imatex.Web.Options;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -10,20 +10,21 @@ namespace Imatex.Web.Services.SocialMedias;
 
 public interface ITikTokService
 {
-    Task<VideoResultBase> DownloadVideoAsync(string? videoUrl);
+    Task<VideoResultBase> DownloadVideoAsync(string? videoUrl, CancellationToken cancellationToken = default);
 }
 
 public partial class TikTokService(IHttpClientFactory httpClientFactory, IOptions<TikTokOptions> tikTokOptions, ILogger<TikTokService> logger) : ITikTokService
 {
-    readonly Random _random = new();
-    readonly ILogger<TikTokService> _logger = logger;
-    readonly CancellationToken _cancellationToken = new();
-    readonly TikTokOptions _tiktokOptions = tikTokOptions.Value;
-    readonly HttpClient _client = httpClientFactory.CreateClient();
+    private readonly ILogger<TikTokService> _logger = logger;
+    private readonly TikTokOptions _tiktokOptions = tikTokOptions.Value;
 
-    static string? ExtractVideoId(string? url)
+    private static string? ExtractVideoId(string? url)
     {
-        if (string.IsNullOrWhiteSpace(url)) return null;
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return string.Empty;
+        }
+
         var match = Regex.Match(url, SocialMediaExtensions.TikTokPattern);
 
         if (!match.Success)
@@ -44,13 +45,15 @@ public partial class TikTokService(IHttpClientFactory httpClientFactory, IOption
         return string.Empty;
     }
 
-    void SetRandomUserAgent()
+    private void ConfigureUserAgent(ref HttpClient client)
     {
-        string randomAgent = _tiktokOptions.Agents.ElementAt(_random.Next(_tiktokOptions.Agents.Count));
-        _client.DefaultRequestHeaders.UserAgent.ParseAdd(randomAgent);
+        string randomAgent = StringPool.Shared.GetOrAdd(_tiktokOptions.Agents.ElementAt(Random.Shared.Next(_tiktokOptions.Agents.Count)));
+
+        client.DefaultRequestHeaders.UserAgent.Clear();
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(randomAgent);
     }
 
-    public async Task<VideoResultBase> DownloadVideoAsync(string? videoUrl)
+    public async Task<VideoResultBase> DownloadVideoAsync(string? videoUrl, CancellationToken cancellationToken = default)
     {
         var videoResult = new VideoResultBase();
         string? videoId = ExtractVideoId(videoUrl);
@@ -60,14 +63,16 @@ public partial class TikTokService(IHttpClientFactory httpClientFactory, IOption
             return videoResult.SetError("Unable to get TikTok video id.");
         }
 
-        SetRandomUserAgent();
+        var client = httpClientFactory.CreateClient(nameof(Program));
+
+        ConfigureUserAgent(ref client);
 
         string apiUrl = string.Format(_tiktokOptions.TikTokDownloadApi, videoId);
 
         try
         {
-            HttpResponseMessage response = await _client.GetAsync(apiUrl, _cancellationToken);
-            string content = await response.Content.ReadAsStringAsync();
+            HttpResponseMessage response = await client.GetAsync(apiUrl, cancellationToken);
+            string content = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {

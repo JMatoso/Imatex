@@ -1,16 +1,25 @@
 ﻿using Imatex.Web.Models;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using Tesseract;
 
 namespace Imatex.Web.Services.Ocr;
 
-public class TextConverterService : IDisposable, ITextConverterService
+public class TextConverterService : ITextConverterService
 {
     private readonly TesseractEngine _tesseractEngine;
+    private readonly string _tessDataPath = Path.Combine(Directory.GetCurrentDirectory(), "tessdata");
 
     public TextConverterService()
     {
-        _tesseractEngine = new TesseractEngine(@"./tessdata", "eng+por+fra+spa+ita", EngineMode.Default);
+        TesseractLinuxLoaderFix.Patch();
+
+        if (!Directory.Exists(_tessDataPath))
+        {
+            throw new DirectoryNotFoundException($"Tesseract data directory not found at {_tessDataPath}");
+        }
+
+        _tesseractEngine = new TesseractEngine(_tessDataPath, "eng+por+fra+spa+ita", EngineMode.Default);
     }
 
     /// <summary>
@@ -18,15 +27,23 @@ public class TextConverterService : IDisposable, ITextConverterService
     /// </summary>
     /// <param name="images">Bitmap image files.</param>
     /// <returns>A list of <see cref="ExtractedTextResult"/></returns>
-    public IEnumerable<ExtractedTextResult> GetTextFromImages(params Bitmap[] images)
+    public async IAsyncEnumerable<ExtractedTextResult> GetTextFromImagesAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken,
+        float confidenceThreshold = 0.5f,
+        params Bitmap[] images)
     {
-        foreach (var img in images)
+        foreach (var image in images)
         {
-            using var page = _tesseractEngine.Process(img);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                yield break;
+            }
+
+            using var page = _tesseractEngine.Process(image, PageSegMode.AutoOsd);
 
             string text = page.GetText();
 
-            if (string.IsNullOrEmpty(text) || string.IsNullOrWhiteSpace(text))
+            if (string.IsNullOrWhiteSpace(text) || page.GetMeanConfidence() < confidenceThreshold)
             {
                 continue;
             }
@@ -39,6 +56,8 @@ public class TextConverterService : IDisposable, ITextConverterService
                 Confidence = page.GetMeanConfidence()
             };
         }
+
+        await Task.CompletedTask;
     }
 
     protected virtual void Dispose(bool disposing)

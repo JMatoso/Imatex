@@ -41,5 +41,5 @@ public class ExtractedImage
     public string FileName { get; set; } = string.Empty;
     public string ImageBase64 { get; set; } = string.Empty;
     public string? BaseFileName { get; set; } = string.Empty;
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

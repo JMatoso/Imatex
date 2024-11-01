@@ -1,26 +1,46 @@
 using Blazor.Analytics;
 using Imatex.Web.Helpers.Interop;
+using Imatex.Web.Logging;
 using Imatex.Web.Options;
 using Imatex.Web.Services.Compression;
 using Imatex.Web.Services.Extractor;
 using Imatex.Web.Services.Ocr;
 using Imatex.Web.Services.SocialMedias;
+using Microsoft.IO;
 using MudBlazor;
 using MudBlazor.Services;
+using Serilog;
+using Steeltoe.Extensions.Configuration.Placeholder;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Render Configuration
-if (builder.Environment.IsProduction() || builder.Environment.IsStaging())
+builder.Host.AddPlaceholderResolver();
+builder.Host.UseSerilog(LoggingConfiguration.ConfigureLogger);
+
+// Add services to the container.
+string? sentryDsn = builder.Configuration["SentryDsn"];
+
+if (!string.IsNullOrWhiteSpace(sentryDsn))
 {
-    builder.WebHost.ConfigureKestrel((context, serverOptions) =>
+    builder.WebHost.UseSentry(options =>
     {
-        var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
-        serverOptions.ListenAnyIP(int.Parse(port));
+        options.Debug = false;
+        options.TracesSampleRate = 1.0;
+        options.Dsn = sentryDsn;
+        options.MaxRequestBodySize = Sentry.Extensibility.RequestSize.Always;
+        options.SendDefaultPii = true;
+        options.MinimumBreadcrumbLevel = LogLevel.Warning;
+        options.MinimumEventLevel = LogLevel.Warning;
+        options.DiagnosticLevel = SentryLevel.Warning;
+        options.AttachStacktrace = true;
+
+        options.SetBeforeSend(beforeSend =>
+        {
+            return beforeSend;
+        });
     });
 }
 
-// Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddMudServices(config =>
 {
@@ -33,17 +53,20 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.SnackbarVariant = Variant.Filled;
     config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
 });
-builder.Services.AddHttpClient();
+
 builder.Services.AddServerSideBlazor();
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddGoogleAnalytics(builder.Configuration["GoogleTagId"]);
+builder.Services.AddHttpClient(nameof(Program)).AddStandardResilienceHandler();
 
 builder.Services.AddScoped<ITikTokService, TikTokService>();
 builder.Services.AddScoped<IYouTubeService, YouTubeService>();
+builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
 builder.Services.AddScoped<IApplicationInterop, ApplicationInterop>();
 builder.Services.AddScoped<IZipCompressorService, ZipCompressorService>();
 builder.Services.AddScoped<ITextConverterService, TextConverterService>();
 builder.Services.AddScoped<IImageExtractorService, ImageExtractorService>();
+
 builder.Services.Configure<TikTokOptions>(builder.Configuration.GetSection(TikTokOptions.TikTokOptionsKey));
 builder.Services.Configure<ExtensionsOptions>(builder.Configuration.GetSection(ExtensionsOptions.ExtensionOptionsKey));
 
@@ -65,5 +88,10 @@ app.UseRouting();
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
+
+if (!string.IsNullOrWhiteSpace(sentryDsn))
+{
+    app.UseSentryTracing();
+}
 
 app.Run();

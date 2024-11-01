@@ -5,29 +5,27 @@ namespace Imatex.Web.Services.SocialMedias;
 
 public interface IYouTubeService
 {
-    Task<VideoResultBase> DownloadVideoAsync(string url);
+    Task<VideoResultBase> DownloadVideoAsync(string url, CancellationToken cancellationToken = default);
 }
 
 public class YouTubeService(IHttpClientFactory httpClientFactory, ILogger<YouTubeService> logger) : IYouTubeService
 {
-    readonly ILogger<YouTubeService> _logger = logger;
-    readonly CancellationToken _cancellationToken = new();
-    readonly YoutubeClient _youtubeClient = new(httpClientFactory.CreateClient());
+    private readonly ILogger<YouTubeService> _logger = logger;
 
-    public async Task<VideoResultBase> DownloadVideoAsync(string url)
+    public async Task<VideoResultBase> DownloadVideoAsync(string url, CancellationToken cancellationToken = default)
     {
         var videoResult = new VideoResultBase();
 
         try
         {
-            var video = await _youtubeClient.Videos.GetAsync(url, _cancellationToken);
-
+            var youtubeClient = new YoutubeClient(httpClientFactory.CreateClient(nameof(Program)));
+            var video = await youtubeClient.Videos.GetAsync(url, cancellationToken);
             if (video is null)
             {
                 return videoResult.SetError("Video not found.");
             }
 
-            var streamManifest = await _youtubeClient.Videos.Streams.GetManifestAsync(video.Id, _cancellationToken);
+            var streamManifest = await youtubeClient.Videos.Streams.GetManifestAsync(video.Id, cancellationToken);
             var muxedStreams = streamManifest.GetMuxedStreams().OrderByDescending(s => s.VideoQuality).ToList();
             var audioStreams = streamManifest.GetAudioOnlyStreams().OrderByDescending(s => s.Bitrate).ToList();
 
@@ -56,22 +54,22 @@ public class YouTubeService(IHttpClientFactory httpClientFactory, ILogger<YouTub
             }
 
             videoResult.Title = video.Title;
-            videoResult.Description = video.Description;
-            videoResult.Keywords = [.. video.Keywords];
             videoResult.Duration = video.Duration;
+            videoResult.Keywords = [.. video.Keywords];
+            videoResult.Description = video.Description;
 
             var thumbnail = video.Thumbnails.OrderByDescending(x => x.Resolution.Area).FirstOrDefault();
             videoResult.ThumbnailUrl = thumbnail?.Url;
 
             videoResult.OriginalVideoUrl = video.Url;
-            videoResult.AuthorUsername = video.Author.ChannelTitle;
             videoResult.AuthorNickname = video.Author.ToString();
+            videoResult.AuthorUsername = video.Author.ChannelTitle;
 
             return videoResult;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading video from YouTube.");
+            _logger.LogError(ex, "Error downloading video from YouTube: {Message}", ex.Message);
             return videoResult.SetError("Error downloading video from YouTube.");
         }
     }

@@ -1,26 +1,49 @@
-﻿using Imatex.Web.Models;
+﻿using Imatex.Web.Extensions;
+using Imatex.Web.Models;
+using Microsoft.IO;
 using System.IO.Compression;
 
 namespace Imatex.Web.Services.Compression;
 
-public class ZipCompressorService(ILogger<ZipCompressorService> logger) : IZipCompressorService
+public class ZipCompressorService(ILogger<ZipCompressorService> logger, RecyclableMemoryStreamManager memoryStreamManager) : IZipCompressorService
 {
     private readonly ILogger<ZipCompressorService> _logger = logger;
+    private readonly RecyclableMemoryStreamManager _memoryStreamManager = memoryStreamManager;
 
-    public byte[] CreateZipFileInMemory(IEnumerable<ExtractedImage> extractedImages)
+    public async Task<byte[]> CreateZipFileInMemoryAsync(List<ExtractedImage> extractedImages, CancellationToken cancellationToken = default)
     {
-        if (extractedImages is null || !extractedImages.Any()) return [];
+        if (extractedImages is null || extractedImages.Count == 0)
+        {
+            return [];
+        }
 
-        using MemoryStream memoryStream = new();
+        await using var memoryStream = _memoryStreamManager.GetStream();
+        var semaphore = new SemaphoreSlim(5);
 
         try
         {
-            using ZipArchive archive = new(memoryStream, ZipArchiveMode.Create, true);
-            foreach (var image in extractedImages)
+            using var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true);
+
+            var tasks = extractedImages.Select(async image =>
             {
-                image.Image.Seek(0, SeekOrigin.Begin);
-                AddImageToZip(archive, image.FileName, image.Image);
-            }
+                await semaphore.WaitAsync(cancellationToken);
+
+                try
+                {
+                    if (image.Image.Position > 0)
+                    {
+                        image.Image.Seek(0, SeekOrigin.Begin);
+                    }
+
+                    await AddImageToZipAsync(archive, image.FileName, image.Image);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            await Task.WhenAll(tasks);
         }
         catch (Exception ex)
         {
@@ -28,16 +51,20 @@ public class ZipCompressorService(ILogger<ZipCompressorService> logger) : IZipCo
             return [];
         }
 
-        return memoryStream.ToArray();
+        return memoryStream.ToByteArray();
     }
 
-    private void AddImageToZip(ZipArchive archive, string fileName, Stream imageStream)
+    private async Task AddImageToZipAsync(ZipArchive archive, string fileName, Stream imageStream, CancellationToken cancellationToken = default)
     {
         try
         {
-            ZipArchiveEntry entry = archive.CreateEntry(fileName);
-            using Stream entryStream = entry.Open();
-            imageStream.CopyTo(entryStream);
+            var entry = archive.CreateEntry(fileName);
+            await using var entryStream = entry.Open();
+            await imageStream.CopyToAsync(entryStream, bufferSize: 81920, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Adding image to zip was canceled.");
         }
         catch (Exception ex)
         {

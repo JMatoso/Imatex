@@ -34,17 +34,24 @@ public static class SocialMediaExtensions
     public static SocialMedia GetSocialMediaLink(this Uri? url)
     {
         if (url == null || !url.IsWellFormedOriginalString())
+        {
             return SocialMedia.Unknown;
+        }
 
         var input = url.ToString();
 
         foreach (var kvp in _patterns)
         {
-            if (!_regexes.ContainsKey(kvp.Key))
-                _regexes[kvp.Key] = new Regex(kvp.Value, RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            if (!_regexes.TryGetValue(kvp.Key, out Regex? value))
+            {
+                value = new Regex(kvp.Value, RegexOptions.IgnoreCase | RegexOptions.Compiled);
+                _regexes[kvp.Key] = value;
+            }
 
-            if (_regexes[kvp.Key].IsMatch(input))
+            if (value.IsMatch(input))
+            {
                 return kvp.Key;
+            }
         }
 
         return SocialMedia.Unknown;

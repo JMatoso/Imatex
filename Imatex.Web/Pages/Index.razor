@@ -1,8 +1,10 @@
 ﻿@page "/"
+@using Microsoft.IO
 @using MudBlazor
 
 @inject ILogger<Index> Logger
 @inject Services.Ocr.ITextConverterService Engine
+@inject RecyclableMemoryStreamManager MemoryStreamManager
 
 <MetaTags PageTitle="Image To Text" />
 
@@ -21,10 +23,8 @@
                    @ondragenter="@SetDragClass"
                    @ondragleave="@ClearDragClass"
                    @ondragend="@ClearDragClass">
-        <ButtonTemplate>
-            <MudPaper Height="200px"
-                       Outlined="true"
-                       Class="@_dragClass">
+        <ActivatorContent>
+            <MudPaper Height="200px" Outlined="true" Class="@_dragClass">
                 <MudText Typo="Typo.h6" Align="Align.Center">
                      Drag and drop files here or click
                 </MudText>
@@ -39,26 +39,25 @@
                 </MudText>
                 @foreach (var name in _imageFiles.Select(x => x.imageName))
                 {
-                    <MudChip Color="Color.Dark" Text="@name" />
+                    <MudChip T="string" Color="Color.Dark" Text="@name" />
                 }
             </MudPaper>
-            <MudToolBar DisableGutters="true"
-                        Class="relative d-flex justify-end gap-4 z-30">
-                <MudButton OnClick="@UploadAsync"
-                           Color="Color.Primary"
-                           Disabled="@(!_imageFiles.Any())"
-                           Variant="Variant.Filled">
-                    Extract Text
-                </MudButton>
-                <MudButton OnClick="@Clear"
-                           Color="Color.Error"
-                           Disabled="@(!_imageFiles.Any())"
-                           Variant="Variant.Filled">
-                    Clear
-                </MudButton>
-            </MudToolBar>
-        </ButtonTemplate>
+        </ActivatorContent>
     </MudFileUpload>
+    <MudToolBar Gutters="false" Class="relative d-flex justify-end gap-1 z-30">
+        <MudButton OnClick="@UploadAsync"
+                   Color="Color.Primary"
+                   Disabled="@(!_imageFiles.Any())"
+                   Variant="Variant.Filled">
+            Extract Text
+        </MudButton>
+        <MudButton OnClick="@Clear"
+                   Color="Color.Error"
+                   Disabled="@(!_imageFiles.Any())"
+                   Variant="Variant.Filled">
+            Clear
+        </MudButton>
+    </MudToolBar>
 </MudStack>
 
 @if(_loading)
@@ -66,7 +65,7 @@
     for(int i = 0; i < _imageFiles.Count; i++)
     {
         <MudSkeleton Width="125px" />
-        <MudSkeleton Animation="Animation.Wave" Height="75px" Style="my-4" />
+        <MudSkeleton Animation="Animation.Wave" Height="75px" Class="my-4" />
     }
 }
 
@@ -91,13 +90,12 @@
     private string _dragClass = DefaultDragClass;
     private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mt-4 mud-width-full mud-height-full z-10";
 
-    private List<ExtractedTextResult> _extractedTexts = new();
-    private readonly List<(IBrowserFile file, string imageName)> _imageFiles = new();
+    private List<ExtractedTextResult> _extractedTexts = [];
+    private readonly List<(IBrowserFile file, string imageName)> _imageFiles = [];
 
     protected override void OnInitialized()
     {
         Analytics.TrackNavigation(Navigator.Uri);
-        base.OnInitialized();
     }
 
     private void OnInputFileChanged(InputFileChangeEventArgs e)
@@ -110,7 +108,7 @@
             return;
         }
 
-        foreach (var file in e.GetMultipleFiles())
+        foreach (var file in e.GetMultipleFiles(ExtensionsOptions.Value.MaxFileCount))
         {
             if(!ExtensionsOptions.Value.IsAllowedImageExtension(Path.GetExtension(file.Name)))
             {
@@ -128,17 +126,20 @@
 
         try
         {
-            var images = new List<System.Drawing.Bitmap>();
+            List<System.Drawing.Bitmap> images = [];
 
             foreach (var image in _imageFiles)
             {
-                using var ms = new MemoryStream();
-                await image.file.OpenReadStream(ExtensionsOptions.Value.MaxFileSize).CopyToAsync(ms);
-                var bitmap = new System.Drawing.Bitmap(ms);
-                images.Add(bitmap);
+                await using var memoryStream = MemoryStreamManager.GetStream();
+                await image.file.OpenReadStream(ExtensionsOptions.Value.MaxFileSize).CopyToAsync(memoryStream);
+                images.Add(new System.Drawing.Bitmap(memoryStream));
             }
 
-            _extractedTexts.AddRange(Engine.GetTextFromImages(images.ToArray()));
+            var extractedTexts = Engine.GetTextFromImagesAsync(CancellationToken.None, images: images.ToArray());
+            await foreach (var item in extractedTexts.WithCancellation(CancellationToken.None))
+            {
+                _extractedTexts.Add(item);
+            }
 
             if(_extractedTexts.Count == 0)
             {

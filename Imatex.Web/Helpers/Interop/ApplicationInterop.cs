@@ -23,7 +23,7 @@ public class ApplicationInterop(IJSRuntime jsRuntime, ISnackbar snackBar) : Comp
         Colors.DeepPurple.Default,
         Colors.DeepOrange.Default,
         Colors.Brown.Default,
-        Colors.BlueGrey.Default,
+        Colors.BlueGray.Default,
         Colors.Amber.Default,
     ];
 

@@ -13,11 +13,7 @@
 <MudText Align="Align.Center">Effortlessly <span class="text-primary">download video</span> from your <span class="text-primary">social medias!</span></MudText>
 
 <MudStack Class="w-100 mt-5">
-    <MudPaper Outlined="false"
-              Height="100"
-              Class="text-center p-3"
-              Elevation="0">
-
+    <MudPaper Outlined="false" Height="100" Class="text-center p-3" Elevation="0">
         <MudTextField @bind-Value="_videoUrl"
                       Label="Video Link"
                       Disabled="@_loading"
@@ -29,9 +25,7 @@
                       Variant="Variant.Outlined"
                       OnAdornmentClick="async () => _videoUrl = await Application.PasteFromClipboardAsync()"
                       Clearable="true" />
-
-        <MudToolBar DisableGutters="true"
-                    Class="relative d-flex justify-end gap-4 z-30">
+        <MudToolBar Gutters="true" Class="relative d-flex justify-end gap-1 z-30">
             <MudButton Disabled="@(_loading || string.IsNullOrWhiteSpace(_videoUrl))" OnClick="@GetVideoAsync" Variant="Variant.Filled" Color="Color.Primary">
                 @if (_loading)
                 {
@@ -105,7 +99,9 @@
         <MudText Typo="Typo.h6">
             <MudLink Href="@_videoResult.OriginalVideoUrl" Target="_blank">@_videoResult.Title</MudLink>
             - @_videoResult.AuthorNickname (@_videoResult.AuthorUsername)
-            <MudChip Label="true" Size="Size.Small" Icon="@Icons.Material.Outlined.AccessTime" Variant="Variant.Text">@_videoResult.Duration.GetValueOrDefault().ToString(@"dd\:hh\:mm\:ss")</MudChip>
+            <MudChip Label="true" T="string" Size="Size.Small" Icon="@Icons.Material.Outlined.AccessTime" Variant="Variant.Text">
+                @_videoResult.Duration.GetValueOrDefault().ToString(@"dd\:hh\:mm\:ss")
+            </MudChip>
         </MudText>
         <MudText Typo="Typo.caption">@(_videoResult.Keywords.AsString())</MudText>
         <MudText Typo="Typo.body2" Class="text-break">
@@ -121,28 +117,30 @@
                OnIntervalElapsed="() => _placeholder = SocialMediaExtensions.GetRandomExample()" />
 
 @code {
-    bool _loading = false;
-    string _videoUrl = string.Empty;
+    private bool _loading = false;
+    private string _videoUrl = string.Empty;
     VideoResultBase _videoResult = default!;
-    string _placeholder = SocialMediaExtensions.GetRandomExample();
+    private string _placeholder = SocialMediaExtensions.GetRandomExample();
 
     protected override void OnInitialized()
     {
         Analytics.TrackNavigation(Navigator.Uri);
-        base.OnInitialized();
     }
 
-    async Task GetVideoAsync()
+    private async Task GetVideoAsync()
     {
         _loading = true;
+
         if (string.IsNullOrWhiteSpace(_videoUrl))
         {
             _loading = false;
             Snackbar.Add("Please enter a valid video link.", Severity.Warning);
             return;
         }
+
         await ProcessCommandAsync();
         _loading = false;
+
         Clear();
     }
 
@@ -151,7 +149,7 @@
         _videoUrl = string.Empty;
     }
 
-    public async Task ProcessCommandAsync()
+    private async Task ProcessCommandAsync()
     {
         if (!_videoUrl.TryGetValidLink(out var uri))
         {
@@ -171,7 +169,7 @@
         SetDownloadResult(result);
     }
 
-    void SetDownloadResult(VideoResultBase result)
+    private void SetDownloadResult(VideoResultBase result)
     {
         if (result.Success)
         {
@@ -179,10 +177,10 @@
             return;
         }
 
-        Snackbar.Add(result.ErrorMessage, Severity.Error);        
+        Snackbar.Add(result.ErrorMessage ?? "Something went wrong, try again later.", Severity.Error);        
     }
 
-    async Task DownloadTikTokVideoAsync(string url)
+    private async Task DownloadTikTokVideoAsync(string url)
     {
         _videoResult = await _tikTokService.DownloadVideoAsync(url);
     }

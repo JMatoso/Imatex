@@ -3,15 +3,8 @@ using System.Drawing;
 
 namespace Imatex.Web.Services.Ocr
 {
-    public interface ITextConverterService
+    public interface ITextConverterService : IDisposable
     {
-        void Dispose();
-
-        /// <summary>
-        /// Extract the text from the images.
-        /// </summary>
-        /// <param name="images">Bitmap image files.</param>
-        /// <returns>A list of <see cref="ExtractedTextResult"/></returns>
-        IEnumerable<ExtractedTextResult> GetTextFromImages(params Bitmap[] images);
+        IAsyncEnumerable<ExtractedTextResult> GetTextFromImagesAsync(CancellationToken cancellationToken, float confidenceThreshold = 0.5F, params Bitmap[] images);
     }
 }

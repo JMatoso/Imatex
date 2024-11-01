@@ -1,6 +1,8 @@
 ﻿@page "/image-extractor-from-document"
+@using Microsoft.IO
 
 @inject ILogger<Extractor> Logger
+@inject RecyclableMemoryStreamManager MemoryStreamManager
 @inject Services.Extractor.IImageExtractorService ExtractorService
 @inject Services.Compression.IZipCompressorService ZipCompressorService
 
@@ -14,26 +16,22 @@
                    FilesChanged="UploadDocument" 
                    AppendMultipleFiles="false"
                    MaximumFileCount="@ExtensionsOptions.Value.MaxFileCount">
-        <ButtonTemplate>
-            <MudPaper Height="200px"
-                      Outlined="false"
-                      Class="text-center"
-                      Elevation="0">
-
+        <ActivatorContent>
+            <MudPaper Height="200px" Outlined="false" Class="text-center" Elevation="0">
                 <MudButton HtmlTag="label"
                            Variant="Variant.Filled"
                            Color="Color.Primary"
                            Size="Size.Large"
                            Class="my-7"
                            Disabled="@(_loading)"
-                           StartIcon="@Icons.Material.Filled.CloudUpload"
-                           for="@context.Id">
+                           StartIcon="@Icons.Material.Filled.CloudUpload">
                     Select a Document to Upload
                 </MudButton>
 
                 <MudText Typo="Typo.body2" Align="Align.Center">
                     Maximum file size: <strong>@ExtensionsOptions.Value.MaxFileSize.Bytes()</strong>
                 </MudText>
+
                 <MudText Typo="Typo.body2" Align="Align.Center">
                     Allowed extensions: @ExtensionsOptions.Value.GetAllowedDocumentExtensionsAsString(" | ").ToLower()
                 </MudText>
@@ -42,13 +40,14 @@
                 {
                     <MudChip Class="text-center my-5 text-wrap"
                              Size="Size.Medium"
+                             T="string"
                              Color="Color.Primary"
                              Variant="Variant.Text"
                              Text="@($"{_file.Name} ({_file.Size.Bytes()})")"
                              Icon="@Icons.Material.Outlined.AttachFile" />
                 }                
             </MudPaper>
-        </ButtonTemplate>
+        </ActivatorContent>
     </MudFileUpload>
 </MudStack>
 
@@ -135,7 +134,6 @@
     protected override void OnInitialized()
     {
         Analytics.TrackNavigation(Navigator.Uri);
-        base.OnInitialized();
     }
 
     private void UploadDocument(IBrowserFile file)
@@ -167,11 +165,10 @@
 
         try
         {
-            using var imageMemoryStream = new MemoryStream();
+            await using var imageMemoryStream = MemoryStreamManager.GetStream();
             await _file.OpenReadStream(ExtensionsOptions.Value.MaxFileSize).CopyToAsync(imageMemoryStream);
 
-            var result = ExtractorService.ExtractImagesFromDocument(imageMemoryStream, _file.Name);
-
+            var result = await ExtractorService.ExtractImagesFromDocumentAsync(imageMemoryStream, _file.Name);
             if (!result.Success)
             {
                 Snackbar.Add(result.ErrorMessage, Severity.Error);
@@ -186,9 +183,9 @@
 
             foreach (var image in result.Images)
             {
-                using var ms = new MemoryStream();
-                image.CopyTo(ms);
-                string base64Image = Convert.ToBase64String(ms.ToArray());
+                await using var memoryStream = MemoryStreamManager.GetStream();
+                await image.CopyToAsync(memoryStream);
+                string base64Image = Convert.ToBase64String(memoryStream.ToByteArray());
 
                 _extractedImages.Add(new ExtractedImage()
                 {
@@ -205,7 +202,7 @@
         }
         catch (Exception e)
         {
-            Logger.LogError(e.Message);
+            Logger.LogError(e, e.Message);
             Snackbar.Add("Something went wrong, try again.", Severity.Error);
         }
         finally
@@ -218,6 +215,7 @@
     private async Task DeleteImages()
     {
         var parameters = new DialogParameters<DialogMessage>();
+
         parameters.Add(x => x.ContentText, "Do you really want to delete these images? This process cannot be undone.");
         parameters.Add(x => x.ButtonText, "Delete");
         parameters.Add(x => x.Color, Color.Error);
@@ -225,14 +223,14 @@
         var dialog = await Dialog.ShowAsync<DialogMessage>("Delete Images?", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (result is not null && !result.Canceled)
         {
             _extractedImages.Clear();
             StateHasChanged();
         }
     }
 
-    private void DownloadAll()
+    private async Task DownloadAll()
     {
         if (!_extractedImages.Any())
         {
@@ -242,8 +240,7 @@
 
         _downloading = true;
 
-        var byteArray = ZipCompressorService.CreateZipFileInMemory(_extractedImages);
-
+        var byteArray = await ZipCompressorService.CreateZipFileInMemoryAsync(_extractedImages);
         if (byteArray is null || !byteArray.Any() || byteArray.Length <= 0)
         {
             _downloading = false;

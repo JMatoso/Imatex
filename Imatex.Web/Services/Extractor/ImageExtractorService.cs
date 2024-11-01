@@ -4,11 +4,15 @@ using Imatex.Web.Models;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
+using Microsoft.IO;
+using System.Collections.Concurrent;
 
 namespace Imatex.Web.Services.Extractor;
 
-public class ImageExtractorService(ILogger<ImageExtractorService> logger) : IImageExtractorService
+public class ImageExtractorService(ILogger<ImageExtractorService> logger, RecyclableMemoryStreamManager memoryStreamManager) : IImageExtractorService
 {
+    private readonly RecyclableMemoryStreamManager _memoryStreamManager = memoryStreamManager;
+    private readonly ConcurrentBag<RecyclableMemoryStream> _processedImages = [];
     private readonly ILogger<ImageExtractorService> _logger = logger;
 
     /// <summary>
@@ -21,40 +25,69 @@ public class ImageExtractorService(ILogger<ImageExtractorService> logger) : IIma
     /// <param name="height">The desired height of the resized images. The default value is 480.</param>
     /// <param name="keepAspectRatio">A boolean indicating whether the aspect ratio of the images should be maintained when resizing. The default value is true.</param>
     /// <returns><see cref="ExtratedImageResult"/></returns>
-    public ExtratedImageResult ExtractImagesFromDocument(Stream document, string? fileName = "", bool resizeImages = false, int width = 640, int height = 480, bool keepAspectRatio = true)
+    public async Task<ExtratedImageResult> ExtractImagesFromDocumentAsync(Stream document, string? fileName = "", bool resizeImages = false, int width = 640, int height = 480, bool keepAspectRatio = true, CancellationToken cancellationToken = default)
     {
         try
         {
+            await ClearListAsync();
+
             using var parser = new Parser(document);
 
+            var semaphore = new SemaphoreSlim(5);
             var extractedImages = parser.GetImages();
-            var proccessedImages = new List<Stream>();
             var options = new ImageOptions(ImageFormat.Png);
 
-            foreach (var image in extractedImages)
+            var imageTasks = extractedImages.Select(async image =>
             {
-                var streamImage = image.GetImageStream(options);
-
-                if (resizeImages)
+                try
                 {
-                    var (resizedImages, success) = ResizeImage(streamImage, width, height, keepAspectRatio);
+                    await semaphore.WaitAsync(cancellationToken);
+                    await using var imageStream = image.GetImageStream(options);
+                    Stream? finalImageStream = imageStream;
 
-                    if (success && resizedImages is not null)
+                    if (resizeImages)
                     {
-                        proccessedImages.Add(resizedImages);
-                        continue;
+                        finalImageStream = await ResizeImageAsync(
+                            imageStream, width, height, keepAspectRatio, cancellationToken);
+                    }
+
+                    if (finalImageStream is not null)
+                    {
+                        var memoryStream = _memoryStreamManager.GetStream();
+                        await finalImageStream.CopyToAsync(memoryStream, cancellationToken);
+                        await finalImageStream.DisposeAsync();
+
+                        if (memoryStream.Position > 0)
+                        {
+                            memoryStream.Seek(0, SeekOrigin.Begin);
+                        }
+
+                        _processedImages.Add(memoryStream);
                     }
                 }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
 
-                proccessedImages.Add(streamImage);
-            }
+            await Task.WhenAll(imageTasks);
 
-            return new ExtratedImageResult(proccessedImages, fileName?.ToLower());
+            return new ExtratedImageResult(_processedImages, fileName?.ToLower());
         }
         catch (Exception ex)
         {
             _logger.LogError("Error extracting the images from the document: {Message}", ex.Message);
             return new ExtratedImageResult("Error extracting the images from the document.");
+        }
+    }
+
+    private async Task ClearListAsync()
+    {
+        foreach (var image in _processedImages)
+        {
+            await image.DisposeAsync();
+            _ = _processedImages.TryTake(out _);
         }
     }
 
@@ -66,22 +99,21 @@ public class ImageExtractorService(ILogger<ImageExtractorService> logger) : IIma
     /// <param name="height">The desired height of the resized image. The default value is 480.</param>
     /// <param name="keepAspectRatio">A boolean indicating whether the image's proportion should be maintained when resizing. The default value is true.</param>
     /// <returns>A tuple containing the <see cref="Stream"/> of the resized image (or null if the operation fails) and a boolean indicating whether the operation was successful.</returns>
-    public (Stream? resizedImage, bool success) ResizeImage(Stream image, int width = 640, int height = 480, bool keepAspectRatio = true)
+    public async Task<Stream?> ResizeImageAsync(Stream image, int width = 640, int height = 480, bool keepAspectRatio = true, CancellationToken cancellationToken = default)
     {
         try
         {
-            var resizedImage = Resize(image, width, height, keepAspectRatio);
+            var memoryStream = _memoryStreamManager.GetStream();
+            var resizedImage = await ResizeAsync(image, width, height, keepAspectRatio, cancellationToken);
 
-            var ms = new MemoryStream();
+            await ApplyTransparentBackground(resizedImage).SaveAsPngAsync(memoryStream, cancellationToken);
 
-            ApplyTransparentBackground(resizedImage).SaveAsPng(ms);
-
-            return (ms, true);
+            return memoryStream;
         }
         catch (Exception ex)
         {
             _logger.LogError("Error resizing the image: {Message}", ex.Message);
-            return (null, false);
+            return null;
         }
     }
 
@@ -93,21 +125,23 @@ public class ImageExtractorService(ILogger<ImageExtractorService> logger) : IIma
     /// <param name="height">The desired height of the resized image. The default value is 480.</param>
     /// <param name="keepAspectRatio">A boolean indicating whether the image's proportion should be maintained when resizing. The default value is true.</param>
     /// <returns>The resized image of <see cref="Image"/> type.</returns>
-    private static Image Resize(Stream originalImage, int width = 640, int height = 480, bool keepAspectRatio = true)
+    private static async Task<Image> ResizeAsync(Stream originalImage, int width = 640, int height = 480, bool keepAspectRatio = true, CancellationToken cancellationToken = default)
     {
-        originalImage.Seek(0, SeekOrigin.Begin);
+        if (originalImage.Position > 0)
+        {
+            originalImage.Seek(0, SeekOrigin.Begin);
+        }
 
-        var image = Image.Load(originalImage);
-
+        var loadedImage = await Image.LoadAsync(originalImage, cancellationToken);
         var resizeOptions = new ResizeOptions
         {
             Mode = keepAspectRatio ? ResizeMode.Max : ResizeMode.Stretch,
             Size = new Size(width, height)
         };
 
-        image.Mutate(x => x.Resize(resizeOptions));
+        loadedImage.Mutate(x => x.Resize(resizeOptions));
 
-        return image;
+        return loadedImage;
     }
 
     /// <summary>
