@@ -1,6 +1,8 @@
 ﻿using Imatex.Web.Models;
+using Newtonsoft.Json;
 using System.Drawing;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Tesseract;
 
 namespace Imatex.Web.Services.Ocr;
@@ -21,7 +23,7 @@ public class TextConverterService : ITextConverterService
             if (!Directory.Exists(_tessDataPath))
             {
                 _isConfigured = false;
-                _logger.LogError("Tesseract data directory not found at {TessDataPath}", _tessDataPath);
+                _logger.LogCritical("Tesseract data directory not found at {TessDataPath} | {@OSInformation}", _tessDataPath, GetOSInformation());
                 return;
             }
 
@@ -31,7 +33,32 @@ public class TextConverterService : ITextConverterService
         catch (Exception ex)
         {
             _isConfigured = false;
-            _logger.LogError(ex, "Failed to initialize Tesseract engine");
+            _logger.LogCritical(ex, "Failed to initialize Tesseract engine: {Message} | {@OSInformation}", ex.Message, GetOSInformation());
+        }
+
+        static string GetOSInformation()
+        {
+            object values = new
+            {
+                RuntimeInformation.OSDescription,
+                RuntimeInformation.FrameworkDescription,
+                OSArchitecture = RuntimeInformation.OSArchitecture.ToString(),
+                OSVersion = Environment.OSVersion.ToString(),
+                ProcessArchitecture = RuntimeInformation.ProcessArchitecture.ToString(),
+                RuntimeInformation.RuntimeIdentifier,
+                IsLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux),
+                IsMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX),
+                IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows),
+                Environment.Is64BitOperatingSystem,
+                Environment.Is64BitProcess,
+                Environment.ProcessorCount,
+                Environment.Version,
+                Environment.CurrentDirectory,
+                Environment.SystemDirectory,
+                Environment.MachineName,
+            };
+
+            return JsonConvert.SerializeObject(values, Formatting.Indented);
         }
     }
 
