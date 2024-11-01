@@ -20,6 +20,8 @@ public class TextConverterService : ITextConverterService
 
         try
         {
+            TesseractLinuxLoaderFix.Patch();
+
             if (!Directory.Exists(_tessDataPath))
             {
                 _isConfigured = false;

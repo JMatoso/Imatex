@@ -27,9 +27,13 @@ RUN ldconfig
 RUN ln -s /usr/lib/x86_64-linux-gnu/liblept.so.5 /usr/lib/x86_64-linux-gnu/libleptonica-1.82.0.so
 RUN ln -s /usr/lib/x86_64-linux-gnu/libtesseract.so.4.0.1 /usr/lib/x86_64-linux-gnu/libtesseract41.so
 
-#WORKDIR /app/x64
-#RUN ln -s /usr/lib/x86_64-linux-gnu/liblept.so.5 libleptonica-1.82.0.so
-#RUN ln -s /usr/lib/x86_64-linux-gnu/libtesseract.so.4.0.1 libtesseract41.so
+WORKDIR /app/x64
+RUN ln -s /usr/lib/x86_64-linux-gnu/liblept.so.5 libleptonica-1.82.0.so
+RUN ln -s /usr/lib/x86_64-linux-gnu/libtesseract.so.4.0.1 libtesseract41.so
+
+WORKDIR /app/runtimes
+RUN ln -s /usr/lib/x86_64-linux-gnu/liblept.so.5 libleptonica-1.82.0.so
+RUN ln -s /usr/lib/x86_64-linux-gnu/libtesseract.so.4.0.1 libtesseract41.so
 
 # Switch back to the app user after installation
 USER app
@@ -57,7 +61,7 @@ FROM base AS final
 
 WORKDIR /app
 COPY --from=publish /app/publish .
-#COPY --from=build /src/Imatex.Web/runtimes ./runtimes
+COPY --from=build /src/Imatex.Web/runtimes ./runtimes
 
 # Set the entrypoint
 ENTRYPOINT ["dotnet", "Imatex.Web.dll"]

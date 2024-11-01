@@ -6,11 +6,15 @@ using Imatex.Web.Services.Compression;
 using Imatex.Web.Services.Extractor;
 using Imatex.Web.Services.Ocr;
 using Imatex.Web.Services.SocialMedias;
+using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel;
+using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption;
 using Microsoft.IO;
 using MudBlazor;
 using MudBlazor.Services;
 using Serilog;
+using Steeltoe.Extensions.Configuration;
 using Steeltoe.Extensions.Configuration.Placeholder;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,6 +44,20 @@ if (!string.IsNullOrWhiteSpace(sentryDsn))
         });
     });
 }
+
+builder.Services.AddDataProtection()
+                .PersistKeysToFileSystem(new DirectoryInfo("/keys"))
+                .SetDefaultKeyLifetime(TimeSpan.FromDays(365))
+                .UseCryptographicAlgorithms(new AuthenticatedEncryptorConfiguration()
+                {
+                    EncryptionAlgorithm = EncryptionAlgorithm.AES_256_CBC,
+                    ValidationAlgorithm = ValidationAlgorithm.HMACSHA256
+                }).SetApplicationName("Imatex");
+
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "Imatex.AntiForgery";
+});
 
 builder.Services.AddRazorPages();
 builder.Services.AddMudServices(config =>
