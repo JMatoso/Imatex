@@ -20,6 +20,9 @@ RUN cmake ..
 RUN make
 RUN make install
 
+# Update the library cache
+RUN ldconfig
+
 # Switch back to the app user after installation
 USER app
 
