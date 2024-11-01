@@ -1,15 +1,15 @@
-# Etapa base com .NET Runtime e instalação do Tesseract
+# Base stage with .NET Runtime and Tesseract installation
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 
-# Temporariamente troque para root para instalar as dependências
+# Temporarily switch to root to install dependencies
 USER root
 
-# Atualizar e instalar dependências do Tesseract
+# Update and install Tesseract dependencies
 RUN apt-get update && \
     apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev
 
-# Instalação de Leptonica (dependência do Tesseract)
+# Install Leptonica (dependency for Tesseract)
 RUN apt-get install -y git cmake build-essential
 RUN mkdir /leptonica
 RUN git clone --depth 1 --branch 1.82.0 https://github.com/DanBloomberg/leptonica.git /leptonica
@@ -20,29 +20,32 @@ RUN cmake ..
 RUN make
 RUN make install
 
-# Volte para o usuário app após a instalação
+# Switch back to the app user after installation
 USER app
 
-# Etapa build com .NET SDK para compilar o projeto
+# Build stage with .NET SDK to compile the project
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY *.csproj ./
-RUN dotnet restore
+
+# Copy all files and restore dependencies
 COPY . .
 WORKDIR "/src/Imatex.Web"
+RUN dotnet restore
+
+# Build the project
 RUN dotnet build -c $BUILD_CONFIGURATION -o /app/build
 
-# Etapa publish para gerar a publicação final
+# Publish stage to generate final application output
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false 
 
-# Etapa final com .NET Runtime e aplicação publicada
+# Final stage with .NET Runtime and published application
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 COPY --from=build /src/Imatex.Web/runtimes ./runtimes
 
-# Definir o ponto de entrada
+# Set the entrypoint
 ENTRYPOINT ["dotnet", "Imatex.Web.dll"]

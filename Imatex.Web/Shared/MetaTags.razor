@@ -9,12 +9,10 @@
     <meta name="abstract" content="@Description">
     <meta name="description" content="@Description">
 
-    <meta property="og:image" content="@_images">
     <meta property="og:url" content="@Navigator.Uri">
     <meta property="og:description" content="@Description">
     <meta property="og:title" content="@($"Imatex - {PageTitle}")">
 
-    <meta name="twitter:image" content="@_images">
     <meta name="twitter:url" content="@Navigator.Uri">
     <meta name="twitter:description" content="@Description">
     <meta name="twitter:title" content="@($"Imatex - {PageTitle}")">    
@@ -31,6 +29,4 @@
 
     [Parameter]   
     public string? Description { get; set; } = "Imatex is a web application that allows you to extract text from images, images from documents and download videos from social media.";
-
-    private string? _images => Navigator.BaseUri + "images/image.jpg";
 }
