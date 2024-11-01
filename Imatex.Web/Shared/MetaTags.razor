@@ -26,11 +26,11 @@
     public string PageTitle { get; set; } = "Home";
 
     [Parameter]
-    public IEnumerable<string> Keywords { get; set; } = new string[] { "Imatex", "Image To Text", "Image Extractor", "OCR", "Optical Character Recognition", "Document To Image", "Extract Images From Documents" };
+    public IEnumerable<string> Keywords { get; set; } = new string[] { "Imatex", "Image To Text", "Image Extractor", "OCR", "Optical Character Recognition", "Document To Image", "Extract Images From Documents", "Youtube", "Tiktok", "Video", "Download", "Video Download" };
     private string? _keywords => string.Join(", ", Keywords ?? []);
 
     [Parameter]   
-    public string? Description { get; set; } = "Imatex is a web application that allows you to extract text from images and documents.";
+    public string? Description { get; set; } = "Imatex is a web application that allows you to extract text from images, images from documents and download videos from social media.";
 
     private string? _images => Navigator.BaseUri + "images/image.jpg";
 }
