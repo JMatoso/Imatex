@@ -45,20 +45,6 @@ if (!string.IsNullOrWhiteSpace(sentryDsn))
     });
 }
 
-builder.Services.AddDataProtection()
-                .PersistKeysToFileSystem(new DirectoryInfo("/keys"))
-                .SetDefaultKeyLifetime(TimeSpan.FromDays(365))
-                .UseCryptographicAlgorithms(new AuthenticatedEncryptorConfiguration()
-                {
-                    EncryptionAlgorithm = EncryptionAlgorithm.AES_256_CBC,
-                    ValidationAlgorithm = ValidationAlgorithm.HMACSHA256
-                }).SetApplicationName("Imatex");
-
-builder.Services.AddAntiforgery(options =>
-{
-    options.Cookie.Name = "Imatex.AntiForgery";
-});
-
 builder.Services.AddRazorPages();
 builder.Services.AddMudServices(config =>
 {

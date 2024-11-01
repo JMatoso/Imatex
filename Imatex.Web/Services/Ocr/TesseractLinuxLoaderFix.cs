@@ -12,7 +12,7 @@ public static class TesseractLinuxLoaderFix
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            LibraryLoader.Instance.CustomSearchPath = $"{AppDomain.CurrentDomain.BaseDirectory}/runtimes";
+            LibraryLoader.Instance.CustomSearchPath = $"{AppDomain.CurrentDomain.BaseDirectory}/x64";
         }
     }
 }
