@@ -46,6 +46,9 @@ RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # Final stage with .NET Runtime and published application
 FROM base AS final
+WORKDIR /app/x64
+RUN ln -s /usr/lib/x86_64-linux-gnu/liblept.so.5 libleptonica-1.82.0.so
+#RUN ln -s /usr/lib/x86_64-linux-gnu/libtesseract.so.4.0.1 libtesseract41.so
 WORKDIR /app
 COPY --from=publish /app/publish .
 #COPY --from=build /src/Imatex.Web/runtimes ./runtimes
