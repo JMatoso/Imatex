@@ -7,19 +7,32 @@ namespace Imatex.Web.Services.Ocr;
 
 public class TextConverterService : ITextConverterService
 {
-    private readonly TesseractEngine _tesseractEngine;
+    private static bool _isConfigured = false;
+    private readonly ILogger<TextConverterService> _logger;
+    private readonly TesseractEngine _tesseractEngine = default!;
     private readonly string _tessDataPath = Path.Combine(Directory.GetCurrentDirectory(), "tessdata");
 
-    public TextConverterService()
+    public TextConverterService(ILogger<TextConverterService> logger)
     {
-        TesseractLinuxLoaderFix.Patch();
+        _logger = logger;
 
-        if (!Directory.Exists(_tessDataPath))
+        try
         {
-            throw new DirectoryNotFoundException($"Tesseract data directory not found at {_tessDataPath}");
-        }
+            if (!Directory.Exists(_tessDataPath))
+            {
+                _isConfigured = false;
+                _logger.LogError("Tesseract data directory not found at {TessDataPath}", _tessDataPath);
+                return;
+            }
 
-        _tesseractEngine = new TesseractEngine(_tessDataPath, "eng+por+fra+spa+ita", EngineMode.Default);
+            _tesseractEngine = new TesseractEngine(_tessDataPath, "eng+por+fra+spa+ita", EngineMode.Default);
+            _isConfigured = true;
+        }
+        catch (Exception ex)
+        {
+            _isConfigured = false;
+            _logger.LogError(ex, "Failed to initialize Tesseract engine");
+        }
     }
 
     /// <summary>
@@ -32,6 +45,17 @@ public class TextConverterService : ITextConverterService
         float confidenceThreshold = 0.5f,
         params Bitmap[] images)
     {
+        if (!_isConfigured)
+        {
+            yield return new ExtractedTextResult
+            {
+                Text = "Tesseract engine is not configured",
+                FileName = string.Empty,
+                DateIssued = DateTimeOffset.UtcNow,
+                Confidence = 0
+            };
+        }
+
         foreach (var image in images)
         {
             if (cancellationToken.IsCancellationRequested)
