@@ -9,9 +9,9 @@
 <MetaTags PageTitle="Image To Text" />
 
 <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Image To Text</MudText>
-<MudText Align="Align.Center">Turn your <span class="text-primary">images into text</span> instantly! Upload a photo and <span class="text-primary">get a text</span> in seconds. It's that easy!</MudText>
+<MudText Align="Align.Center">Turn your <MudText Color="Color.Primary" Inline="true">images into text</MudText> instantly! Upload a photo and <MudText Color="Color.Primary" Inline="true">get a text</MudText> in seconds. It's that easy!</MudText>
 
-<MudStack Class="w-100">
+<MudStack Class="w-100 mt-5">
     <MudFileUpload T="IReadOnlyList<IBrowserFile>"
                    AppendMultipleFiles
                    Accept="@ExtensionsOptions.Value.GetAllowedImageExtensionsAsString()"

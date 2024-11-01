@@ -9,9 +9,9 @@
 <MetaTags PageTitle="Image Extractor" />
 
 <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">Extract Images From Documents</MudText>
-<MudText Align="Align.Center">Effortlessly <span class="text-primary">extract images</span> from documents! Upload your file and <span class="text-primary">retrieve images</span> quickly and easily.</MudText>
+<MudText Align="Align.Center">Effortlessly <MudText Color="Color.Primary" Inline="true">extract images</MudText> from documents! Upload your file and <MudText Color="Color.Primary" Inline="true">retrieve images</MudText> quickly and easily.</MudText>
 
-<MudStack Class="w-100 mt-2">
+<MudStack Class="w-100 mt-5">
     <MudFileUpload T="IBrowserFile" Accept="@ExtensionsOptions.Value.GetAllowedDocumentExtensionsAsString()" 
                    FilesChanged="UploadDocument" 
                    AppendMultipleFiles="false"
